@@ -3,7 +3,9 @@
 The Claude Code panel uses the same transport with the id ``claude``: its PTY
 runs the `claude` CLI instead of a shell (``routes_claude.py``). Unlike a shell,
 an exited Claude session is not restarted by reconnecting: the stream answers
-410 and the panel offers to start it again.
+410 and the panel offers to start it again. When Claude Code exits by itself,
+its stream ends with an ``ended`` event, so the panel does not have to wait for
+that reconnect to find out.
 
 Contracts are GilzaBots'. Tab ids are ``main`` and ``main-<n>``. A tab keeps its
 id across a project switch, so a session found under it that belongs to
@@ -135,6 +137,10 @@ async def stream(request: web.Request) -> web.StreamResponse:
         while (chunk := await queue.get()) is not None:
             offset += len(chunk)
             await send(chunk, offset)
+        if term_id == CLAUDE_ID and session.ended_by_itself:
+            # Said outright, so the panel shows that Claude Code ended at once
+            # instead of learning it from a reconnect answered 410 seconds later.
+            await response.write(b"event: ended\ndata: \n\n")
     except (ConnectionResetError, asyncio.CancelledError):
         pass  # the client went away
     finally:

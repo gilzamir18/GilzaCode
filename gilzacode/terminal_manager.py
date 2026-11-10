@@ -95,6 +95,9 @@ class TerminalSession:
         self.started_at = time.monotonic()
         self.last_output_at = self.started_at
         self.exited = False
+        # The program ended by itself (`exit`, `/exit`), as opposed to being
+        # closed by the server (a restart, a project switch, a deleted folder).
+        self.ended_by_itself = False
 
         if sys.platform == "win32":
             try:
@@ -189,6 +192,7 @@ class TerminalSession:
             if selector is not None:
                 selector.close()
             if self.is_running:
+                self.ended_by_itself = True
                 if self.loop:
                     try:
                         self.loop.call_soon_threadsafe(self.close)

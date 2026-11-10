@@ -19,6 +19,7 @@ export default function TerminalInstance({
   onZoomReset,
   redrawPromptOnShow = true,
   onStreamClosed,
+  onConnectionChange,
   connectionKey = 0,
 }) {
   const { t } = useTranslation();
@@ -46,6 +47,7 @@ export default function TerminalInstance({
     onZoomReset,
     redrawPromptOnShow,
     onStreamClosed,
+    onConnectionChange,
     connectionKey,
   });
 

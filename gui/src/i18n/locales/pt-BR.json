@@ -2005,6 +2005,8 @@
     "pasteFailed": "Não foi possível colar no Claude Code.",
     "startFailed": "Não foi possível iniciar o Claude Code.",
     "ended": "O Claude Code encerrou.",
-    "startAgain": "Iniciar o Claude Code de novo"
+    "startAgain": "Iniciar o Claude Code de novo",
+    "reconnecting": "Aguardando a reconexão com o Claude Code…",
+    "reconnectingHint": "Isso leva alguns segundos. Se a sessão tiver terminado, você poderá iniciá-la de novo."
   }
 }

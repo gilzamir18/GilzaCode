@@ -57,9 +57,12 @@ const DARK_TERMINAL_THEME = {
 // shell draws a fresh prompt. It must be off for anything that is not a shell: in
 // Claude Code that Enter would answer whatever dialog is on screen (the folder
 // trust prompt on a first run). `onStreamClosed` is called when the server ends
-// the stream for good (EventSource stops retrying), e.g. Claude Code exited.
+// the stream for good: an `ended` event (Claude Code exited by itself), or a
+// reconnect that is refused (EventSource stops retrying).
+// `onConnectionChange('reconnecting' | 'open')` lets the caller show the
+// reconnection itself; without it, a lost connection is written into the terminal.
 // Changing `connectionKey` reconnects (after a restart).
-export function useTerminal({ activeProject, terminalRef, terminalInstanceRef, fitAddonRef, eventSourceRef, activeBottomTab, bottomPanelHeight, isTerminalCollapsed, theme, termId = 'main', isActive = true, fontSize = TERMINAL_FONT_SIZE_DEFAULT, uiScale = 1, onZoomIn, onZoomOut, onZoomReset, redrawPromptOnShow = true, onStreamClosed, connectionKey = 0 }) {
+export function useTerminal({ activeProject, terminalRef, terminalInstanceRef, fitAddonRef, eventSourceRef, activeBottomTab, bottomPanelHeight, isTerminalCollapsed, theme, termId = 'main', isActive = true, fontSize = TERMINAL_FONT_SIZE_DEFAULT, uiScale = 1, onZoomIn, onZoomOut, onZoomReset, redrawPromptOnShow = true, onStreamClosed, onConnectionChange, connectionKey = 0 }) {
   const { t } = useTranslation();
   // The terminal effect must not be torn down just because the language changed,
   // so `t` is read through a ref instead of being an effect dependency.
@@ -67,6 +70,8 @@ export function useTerminal({ activeProject, terminalRef, terminalInstanceRef, f
   tRef.current = t;
   const onStreamClosedRef = useRef(onStreamClosed);
   onStreamClosedRef.current = onStreamClosed;
+  const onConnectionChangeRef = useRef(onConnectionChange);
+  onConnectionChangeRef.current = onConnectionChange;
   const promptDrawnRef = useRef(false);
   // Written on every render so the ResizeObserver callback (a closure created
   // once at mount) always reads the latest value without a stale-closure race.
@@ -221,9 +226,22 @@ export function useTerminal({ activeProject, terminalRef, terminalInstanceRef, f
       }
     };
 
+    evs.onopen = () => onConnectionChangeRef.current?.('open');
+
+    // The server says the program ended by itself (Claude Code after `/exit`):
+    // stop here instead of retrying a stream that would only answer 410.
+    evs.addEventListener('ended', () => {
+      evs.close();
+      onStreamClosedRef.current?.();
+    });
+
     evs.onerror = () => {
       if (evs.readyState === EventSource.CLOSED) {
         onStreamClosedRef.current?.();
+        return;
+      }
+      if (onConnectionChangeRef.current) {
+        onConnectionChangeRef.current('reconnecting');
         return;
       }
       term.write(`\r\n\x1b[31m[GilzaCode] ${tRef.current('bottomPanel.terminalConnectionLost', 'Terminal connection lost. Reconnecting...')}\x1b[0m\r\n`);

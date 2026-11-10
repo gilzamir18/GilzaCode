@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bot, ClipboardPaste, RotateCcw, Trash2, X } from 'lucide-react';
+import { Bot, ClipboardPaste, Loader2, RotateCcw, Trash2, X } from 'lucide-react';
 import TerminalInstance from './TerminalInstance';
 import { TERMINAL_FONT_SIZE_DEFAULT } from '../hooks/useTerminal';
 
@@ -29,6 +29,9 @@ export default function ClaudePanel({ width, fillContainer, activeProject, promp
   const [ended, setEnded] = useState(false);
   const [problem, setProblem] = useState('');
   const [connectionKey, setConnectionKey] = useState(0);
+  // The stream dropped and EventSource is retrying. Not after `/exit`: the
+  // server then ends the stream with an `ended` event and the panel says so at once.
+  const [reconnecting, setReconnecting] = useState(false);
   const termRef = useRef(null);
 
   const readStatus = useCallback(async () => {
@@ -43,6 +46,7 @@ export default function ClaudePanel({ width, fillContainer, activeProject, promp
   useEffect(() => {
     setEnded(false);
     setProblem('');
+    setReconnecting(false);
     readStatus().then(status => { if (status && !status.available) setProblem(status.problem); });
   }, [readStatus]);
 
@@ -86,10 +90,14 @@ export default function ClaudePanel({ width, fillContainer, activeProject, promp
     }
     setProblem('');
     setEnded(false);
+    setReconnecting(false);
     setConnectionKey(k => k + 1);
   };
 
+  const onConnectionChange = useCallback((state) => setReconnecting(state === 'reconnecting'), []);
+
   const onStreamClosed = useCallback(async () => {
+    setReconnecting(false);
     const status = await readStatus();
     if (status && !status.available) setProblem(status.problem);
     else setEnded(true);
@@ -149,7 +157,7 @@ export default function ClaudePanel({ width, fillContainer, activeProject, promp
             <span>{t('claudePanel.ended', 'Claude Code has ended.')}</span>
             <button type="button" className="vscode-button" onClick={restart}>{t('claudePanel.startAgain', 'Start Claude Code again')}</button>
           </div>
-        ) : (
+        ) : (<>
           <TerminalInstance
             termId="claude"
             activeProject={activeProject}
@@ -163,9 +171,23 @@ export default function ClaudePanel({ width, fillContainer, activeProject, promp
             onMount={(term) => { termRef.current = term; }}
             redrawPromptOnShow={false}
             onStreamClosed={onStreamClosed}
+            onConnectionChange={onConnectionChange}
             connectionKey={connectionKey}
           />
-        )}
+          {reconnecting && (
+            <div className="claude-panel-reconnecting" role="status" aria-live="polite">
+              <div className="claude-panel-reconnecting-card">
+                <Loader2 size={22} className="animate-spin" aria-hidden="true" />
+                <span className="claude-panel-reconnecting-title">
+                  {t('claudePanel.reconnecting', 'Waiting for Claude Code to reconnect…')}
+                </span>
+                <span className="claude-panel-reconnecting-hint">
+                  {t('claudePanel.reconnectingHint', 'This takes a few seconds. If the session has ended, you can start it again.')}
+                </span>
+              </div>
+            </div>
+          )}
+        </>)}
       </div>
     </aside>
   );

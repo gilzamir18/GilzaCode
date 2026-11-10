@@ -1952,6 +1952,8 @@
     "pasteFailed": "Could not paste into Claude Code.",
     "startFailed": "Claude Code could not be started.",
     "ended": "Claude Code has ended.",
-    "startAgain": "Start Claude Code again"
+    "startAgain": "Start Claude Code again",
+    "reconnecting": "Waiting for Claude Code to reconnect…",
+    "reconnectingHint": "This takes a few seconds. If the session has ended, you can start it again."
   }
 }

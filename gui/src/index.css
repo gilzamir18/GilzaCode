@@ -4623,3 +4623,52 @@ select {
 .chat-msg-delivered {
   animation: chatMessageDelivered 420ms ease-out;
 }
+
+/* Claude Code panel: the stream dropped and is being retried (e.g. after /exit) */
+.claude-panel-reconnecting {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: color-mix(in srgb, var(--vscode-bg) 72%, transparent);
+  backdrop-filter: blur(2px);
+  animation: claudeReconnectFadeIn 0.2s ease-out;
+}
+
+.claude-panel-reconnecting-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: 300px;
+  padding: 18px 22px;
+  border: 1px solid var(--vscode-border);
+  border-radius: 10px;
+  background: var(--vscode-sidebar-bg);
+  color: var(--vscode-text-fg);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  text-align: center;
+}
+
+.claude-panel-reconnecting-card > svg {
+  color: var(--vscode-active-border);
+}
+
+.claude-panel-reconnecting-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.claude-panel-reconnecting-hint {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--vscode-descriptionForeground);
+}
+
+@keyframes claudeReconnectFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

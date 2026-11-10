@@ -229,6 +229,18 @@ reports a dangling name when the line runs; the cut was driven by it.
 - **No restart by reconnecting:** an exited session is not restarted by
   reconnecting, as a shell tab is. The stream answers 410, and the panel
   offers to start it again (`/api/claude/start`).
+- **An exit is announced.** When Claude Code exits by itself (`/exit`), its
+  stream ends with an SSE `ended` event after the last output. The panel closes
+  the EventSource and shows that Claude Code ended at once. Before, it learnt
+  this only from the reconnect EventSource makes about 3 s later, and showed
+  "connection lost" meanwhile. A session closed by the server (a restart, a
+  project switch, a deleted folder) sends no `ended`
+  (`TerminalSession.ended_by_itself`), so a stale stream cannot report a
+  session that was just replaced as ended.
+- **A real drop is shown as waiting, not as an error.** The shell tabs write
+  "connection lost" into the terminal. The panel passes `onConnectionChange`
+  to the terminal hook instead and covers the terminal with a "waiting for
+  Claude Code to reconnect" card until the stream reopens or ends.
 - **No Enter on show.** The shell tabs send one Enter the first time they are
   shown, to redraw the prompt. The panel turns that off
   (`redrawPromptOnShow`), because in Claude Code it would answer the folder
