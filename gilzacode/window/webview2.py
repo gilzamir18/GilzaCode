@@ -160,6 +160,32 @@ def failure_action(kind: str, last_reload: float | None, now: float) -> str:
     return IGNORE
 
 
+#: HRESULT of ERROR_INVALID_STATE: WebView2 cannot create its controller because
+#: the profile folder is held by another WebView2 browser process started with
+#: different options (another GilzaCode window, e.g. a development run with
+#: different browser arguments). Restarting cannot help while that one runs.
+PROFILE_IN_USE_HRESULT = 0x8007139F
+
+PROFILE_IN_USE_BODY = ("The GilzaCode window could not start its browser engine: another GilzaCode window "
+                       "is using the same browser profile ({folder}) with different settings.\n\n"
+                       "Close the other GilzaCode window, then start GilzaCode again.")
+
+
+def initialisation_failure_kind(exception) -> str:
+    """``"profile_in_use"`` for the shared-profile conflict, else ``"other"``."""
+    hresult = getattr(exception, "HResult", None)
+    try:
+        return "profile_in_use" if hresult is not None and int(hresult) & 0xFFFFFFFF == PROFILE_IN_USE_HRESULT else "other"
+    except (TypeError, ValueError):
+        return "other"
+
+
+def _show_profile_in_use(folder: str) -> None:
+    import System.Windows.Forms as WinForms
+    WinForms.MessageBox.Show(PROFILE_IN_USE_BODY.format(folder=folder), FAILURE_TITLE,
+                             WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Error)
+
+
 def _show_failure(kind: str, restart: Callable[[], object] | None, log: Callable[[str], None]) -> None:
     """Tell the user the window's browser is gone, and offer the restart."""
     import System.Windows.Forms as WinForms
@@ -205,7 +231,7 @@ def process_failed_handler(core, log: Callable[[str], None], restart: Callable[[
 
 
 def install_handlers(window, log: Callable[[str], None] = _log,
-                     restart: Callable[[], object] | None = None) -> None:
+                     restart: Callable[[], object] | None = None, profile_folder: str = "") -> None:
     """Subscribe the WebView2 events GilzaCode handles, for a pywebview `window`.
 
     Must be called before ``webview.start``. pywebview runs ``before_show``
@@ -230,6 +256,10 @@ def install_handlers(window, log: Callable[[str], None] = _log,
                 # pywebview only logs this too, and the window stays grey.
                 log(f"initialisation failed: {args.InitializationException}")
                 try:
+                    if initialisation_failure_kind(args.InitializationException) == "profile_in_use":
+                        # A restart would hit the same conflict, so none is offered.
+                        _show_profile_in_use(profile_folder)
+                        return
                     _show_failure(f"initialisation failed: {args.InitializationException}", restart, log)
                 except Exception as exc:  # pragma: no cover - needs a live WebView2
                     log(f"could not report the failure: {type(exc).__name__}: {exc}")

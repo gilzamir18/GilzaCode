@@ -117,6 +117,13 @@ Ported from GilzaBots §2.16.3:
 - Full screen follows the page (presentation mode).
 - A dead renderer is reloaded once. After that, or when the browser process
   dies, a dialog offers a restart.
+- **One browser profile per user** (`<gilzacode home>/webview`). A second
+  window started with different WebView2 options while another holds the
+  profile (e.g. a development run with other browser arguments) cannot
+  initialise: WebView2 answers `0x8007139F`. That case gets its own message
+  ("another GilzaCode window is using the same browser profile; close it"),
+  with no restart offered, because a restart hits the same conflict. It used to
+  show the generic dialog, whose *Restart* looped.
 
 The server runs on its own event loop in a daemon thread, because the main
 thread belongs to the window. The port is the first free one from 3100.
@@ -320,7 +327,58 @@ posts the result to `/api/ide/result`.
   command that works in a frozen build: today it is `sys.executable -m
   gilzacode.mcp_bridge`.
 
-## 9. Roadmap
+## 9. Packaging and installation (`build_exe.ps1`, `packaging/`, `install.ps1`, `uninstall.ps1`)
+
+Adapted from GilzaBots' Windows packaging.
+
+**What the build produces.** `build_exe.ps1` builds the interface, downloads
+Tectonic 0.15.0 and pandoc 3.10 into `build/tools/bin`, and runs
+`packaging/GilzaCode.spec`. The result is `dist/GilzaCode/` and
+`dist/GilzaCode-windows-x64.zip`.
+
+**Two executables share one folder:**
+- `GilzaCode.exe` (windowed) is the window.
+- `gilzacode-mcp.exe` (console) is the MCP bridge. It is a separate console
+  executable because Claude Code speaks to it over stdin/stdout, which a
+  GUI-subsystem build does not provide reliably.
+- In a frozen build, `claude_cli.bridge_command` points the MCP config at
+  `gilzacode-mcp.exe` next to the window. If the bridge is missing, it fails
+  with "Reinstall GilzaCode" instead of falling back to anything.
+- The bridge's analysis excludes the heavy packages (WebView, PyMuPDF,
+  ONNX), and Qt is excluded from both, as in GilzaBots.
+
+**The window's entry point** (`packaging/entry_gilzacode.py`) carries
+GilzaBots' frozen-build setup:
+- UTF-8 streams;
+- pythonnet pointed at the bundled Python DLL;
+- `winpty-agent.exe` on PATH;
+- `CREATE_NO_WINDOW` for children started without flags, so Tectonic or
+  `claude -p` do not flash a console.
+
+**The build checks itself:** it fails if the bundled bridge does not answer
+`initialize` over stdio.
+
+**`install.ps1` installs per user** into `%LOCALAPPDATA%\GilzaCode`, with no
+administrator rights.
+- **Package source:** `-Source <zip or URL>`, else `GILZACODE_DOWNLOAD_URL`,
+  else the latest GitHub release of `gilzamir18/GilzaCode`, once one exists.
+- **What it creates:** Desktop and Start-menu shortcuts, an uninstall shortcut,
+  and a per-user *Installed apps* entry.
+- **What it refuses:** to extract over a running copy.
+- **What it checks:** it warns when `claude` is not on PATH (GilzaCode's one
+  requirement) or when WebView2 is missing, and installs neither.
+- **No PATH entry**, unlike GilzaBots: GilzaCode has no command-line interface.
+
+**`uninstall.ps1`** keeps GilzaBots' guarantees:
+- failures are logged and stay on screen;
+- it refuses while anything runs from the installation, the bridge included;
+- it leaves the folder before deleting it, and retries for antivirus locks;
+- files go first, so a failed removal leaves the entry in place to retry;
+- only shortcuts that point at this installation are removed;
+- the global data goes only with `-Purge` and a typed confirmation;
+- project folders are never touched.
+
+## 10. Roadmap
 
 1. **Window and core server** — done.
 2. **Interface and document backend** — done. Verified in the real window
@@ -329,12 +387,12 @@ posts the result to `/api/ide/result`.
 3. **Claude Code integration** — done: the panel runs Claude Code, staged
    prompts are pasted unsent, Translate and Look up call `claude -p`.
 4. **MCP tools** — done (§8, *MCP tools*).
-5. **Next**: packaging and an installer (PyInstaller; the bridge command in a
-   frozen build), porting GilzaBots' browser suite, the optional channel, a
-   terminal emulator for reading the Claude panel, and the leftovers listed
-   in §7.
+5. **Packaging** — done (§9).
+6. **Next**: a GitHub repository with tagged releases (for `install.ps1`'s
+   default source), porting GilzaBots' browser suite, the optional channel, a
+   terminal emulator for reading the Claude panel, and the leftovers in §7.
 
-## 10. Tests
+## 11. Tests
 
 - `python -m pytest`. Server tests run a real aiohttp server on a port that
   matches its session, since Host is checked, and every test gets its own

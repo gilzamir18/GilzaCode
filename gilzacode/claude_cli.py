@@ -132,14 +132,26 @@ PRE_ALLOWED_TOOLS = ("get_editor_state", "get_pdf_view", "get_problems", "list_p
                      "open_file", "close_file", "reveal_in_pdf", "set_layout")
 
 
-def write_mcp_config() -> str:
-    """Write ``<gilzacode home>/mcp-config.json`` naming the GilzaCode bridge; return its path."""
+def bridge_command() -> tuple[str, list[str]]:
+    """How to start the bridge: the bundled ``gilzacode-mcp.exe`` in a packaged
+    build (a console executable next to ``GilzaCode.exe``), else ``python -m``."""
     import sys
 
+    if getattr(sys, "frozen", False):
+        exe = os.path.join(os.path.dirname(sys.executable), "gilzacode-mcp.exe")
+        if not os.path.isfile(exe):
+            raise ClaudeCliError(f"The GilzaCode MCP bridge is missing from the installation ({exe}). "
+                                 "Reinstall GilzaCode.", kind="not_installed")
+        return exe, []
+    return sys.executable, ["-m", "gilzacode.mcp_bridge"]
+
+
+def write_mcp_config() -> str:
+    """Write ``<gilzacode home>/mcp-config.json`` naming the GilzaCode bridge; return its path."""
     from gilzacode.paths import gilzacode_home, write_text_atomic
+    command, args = bridge_command()
     path = gilzacode_home() / "mcp-config.json"
-    write_text_atomic(path, json.dumps({"mcpServers": {"gilzacode": {
-        "command": sys.executable, "args": ["-m", "gilzacode.mcp_bridge"]}}}, indent=2))
+    write_text_atomic(path, json.dumps({"mcpServers": {"gilzacode": {"command": command, "args": args}}}, indent=2))
     return str(path)
 
 

@@ -158,8 +158,8 @@ def run(host: str = "127.0.0.1", port: int | None = None, *, browser: bool = Fal
             title="GilzaCode", url=server.url, width=width, height=height,
             resizable=True, text_select=True, zoomable=True, background_color=WINDOW_BACKGROUND,
         )
-        webview2.install_handlers(window, restart=lambda: schedule_restart(0.2))
         storage = gilzacode_home() / "webview"
+        webview2.install_handlers(window, restart=lambda: schedule_restart(0.2), profile_folder=str(storage))
         storage.mkdir(parents=True, exist_ok=True)
         webview.start(gui="edgechromium", debug=bool(os.environ.get("GILZACODE_DEVTOOLS")),
                       private_mode=False, storage_path=str(storage))

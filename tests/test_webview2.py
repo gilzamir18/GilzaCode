@@ -170,3 +170,19 @@ def test_the_browser_process_exiting_offers_the_restart():
                                         show=lambda kind, r, log: shown.append((kind, r)))
     handler(None, _failure("BrowserProcessExited"))
     assert shown == [("BrowserProcessExited", None)]
+
+
+class _Exception:
+    def __init__(self, hresult):
+        self.HResult = hresult
+
+
+@pytest.mark.parametrize("hresult", [0x8007139F - 2**32, 0x8007139F])
+def test_a_profile_held_by_another_window_is_told_apart(hresult):
+    # .NET reports HResult as a signed 32-bit integer.
+    assert wv.initialisation_failure_kind(_Exception(hresult)) == "profile_in_use"
+
+
+@pytest.mark.parametrize("exception", [_Exception(-2147024891), _Exception(None), object(), None])
+def test_other_initialisation_failures_keep_the_restart_dialog(exception):
+    assert wv.initialisation_failure_kind(exception) == "other"

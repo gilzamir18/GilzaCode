@@ -183,3 +183,16 @@ def test_the_panel_starts_claude_with_the_bridge(isolated_home, monkeypatch, tmp
     assert "mcp__gilzacode__compile_latex" not in allowed  # it writes files, so Claude Code asks
     env = claude_cli.claude_session_env(str(tmp_path))
     assert env["GILZACODE_PROJECT"] == str(tmp_path) and "CLAUDECODE" not in env
+
+
+def test_a_packaged_build_starts_the_bundled_bridge(isolated_home, monkeypatch, tmp_path):
+    from gilzacode import claude_cli
+    exe_dir = tmp_path / "GilzaCode"
+    exe_dir.mkdir()
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "executable", str(exe_dir / "GilzaCode.exe"))
+    with pytest.raises(claude_cli.ClaudeCliError) as missing:
+        claude_cli.bridge_command()
+    assert "Reinstall" in str(missing.value)
+    (exe_dir / "gilzacode-mcp.exe").write_bytes(b"MZ")
+    assert claude_cli.bridge_command() == (str(exe_dir / "gilzacode-mcp.exe"), [])

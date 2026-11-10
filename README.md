@@ -13,11 +13,23 @@ terminal) and its backend; Claude Code running in its own panel, with document a
 pasting their prompts into it unsent and Translate / Look up using `claude -p`; and an
 MCP server through which Claude Code reads and drives the window (editor state and
 selection, the PDF pane, opening files, revealing a line in the PDF, compiling LaTeX).
-Packaging and an installer come next.
+It is packaged for Windows with a per-user installer.
 
 GilzaCode is free: no account, no subscription. The only thing a user needs besides
 Windows is [Claude Code](https://code.claude.com). Donations are welcome through the
 PayPal link in Settings > About.
+
+## Install
+
+```powershell
+# from a build (see Development):
+powershell -ExecutionPolicy Bypass -File install.ps1 -Source dist\GilzaCode-windows-x64.zip
+```
+
+It installs per user into `%LOCALAPPDATA%\GilzaCode` (no administrator rights), with
+Desktop and Start-menu shortcuts and an entry in Settings > Apps > Installed apps, where it
+is uninstalled. Settings and the project list stay in `~\.gilzacode` unless the uninstaller
+is run with `-Purge`.
 
 ## Requirements
 
@@ -33,6 +45,9 @@ python -m venv .venv
 cd gui; npm ci; npm run build; cd ..     # builds the interface into gilzacode/static
 .venv\Scripts\python.exe -m pytest
 .venv\Scripts\python.exe -m gilzacode
+
+# Windows package: dist\GilzaCode\ and dist\GilzaCode-windows-x64.zip
+powershell -ExecutionPolicy Bypass -File build_exe.ps1
 ```
 
 Set `GILZACODE_DEVTOOLS=1` to open the window with developer tools, and
