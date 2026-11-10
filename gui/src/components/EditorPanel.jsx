@@ -81,6 +81,8 @@ export default function EditorPanel({
   // An agent's reveal_in_pdf ({ seq, file, line, resolve }), answered through
   // its resolver once the PDF pane shows the line.
   pdfRevealRequest,
+  externalCompile,
+  pdfViewProbeRef,
   onFixLatexProblem,
   onAskAboutPdf,
   onAskAboutMarkdown,
@@ -433,6 +435,35 @@ export default function EditorPanel({
     return () => { cancelled = true; };
   }, [selectedFile, activeProject?.project_path]);
 
+  // A compile Claude Code ran with the compile_latex MCP tool (routes_ide.py). Success reloads the PDF the
+  // same way opening the .tex finds it (check-pdf also points /api/latex/pdf
+  // at that file); failure fills the error card. The pane is not expanded,
+  // just as the Compile button does not expand it.
+  useEffect(() => {
+    if (!externalCompile) return undefined;
+    if (!externalCompile.success) {
+      setPdfErrorLog(externalCompile.log);
+      setLatexCompileProblem({ source: 'latex_compile', ...externalCompile, message: externalCompile.log });
+      return undefined;
+    }
+    setPdfErrorLog('');
+    setLatexCompileProblem(null);
+    if (!selectedFile || !selectedFile.toLowerCase().endsWith('.tex') || !activeProject?.project_path) {
+      return undefined;
+    }
+    let cancelled = false;
+    fetch(`/api/latex/check-pdf?filePath=${encodeURIComponent(selectedFile)}&projectPath=${encodeURIComponent(activeProject.project_path)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!cancelled && data.found && (data.pdf_url || data.pdf_base64)) {
+          setPdfUrl(data.pdf_url || `/api/latex/pdf?ts=${Date.now()}`);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+    // Only a new compile is an event; a tab switch is handled by the effect above.
+  }, [externalCompile?.seq]);
+
   // An agent's reveal_in_pdf: the forward search Ctrl+Click runs, for a line the
   // agent names. App focuses the tab at that line first, so the request is taken
   // up once it is the selected file. The PDF is found the way opening the .tex
@@ -766,6 +797,18 @@ export default function EditorPanel({
   const monacoRef = useRef(null);
   const editorContainerRef = useRef(null);
   const pdfPreviewRef = useRef(null);
+  // For the get_pdf_view MCP tool: what the PDF pane shows, or null.
+  if (pdfViewProbeRef) {
+    pdfViewProbeRef.current = () => {
+      const view = pdfPreviewRef.current?.getViewState?.();
+      if (!view || !selectedFile) return null;
+      const source = isPdfFile ? '' : selectedFile;
+      const document = isPdfFile
+        ? selectedFile
+        : String(activeProject?.main_file || selectedFile).replace(/\.tex$/i, '.pdf');
+      return { document, ...(source ? { source_file: source } : {}), ...view };
+    };
+  }
   const pendingEditorValueRef = useRef(null);
   const pendingEditorFileRef = useRef(null);
   const pendingEditorChangeTimerRef = useRef(null);

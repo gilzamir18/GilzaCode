@@ -56,10 +56,8 @@ class SessionEnded(Exception):
 def _new_session(term_id: str, project_path: str) -> TerminalSession:
     if term_id != CLAUDE_ID:
         return TerminalSession(project_path)
-    from gilzacode.claude_cli import child_environment, find_claude
-    from gilzacode.external_tools import environment_with_managed_tools
-    return TerminalSession(project_path, argv=[find_claude()],
-                           env=environment_with_managed_tools(child_environment()))
+    from gilzacode.claude_cli import claude_session_argv, claude_session_env
+    return TerminalSession(project_path, argv=claude_session_argv(), env=claude_session_env(project_path))
 
 
 def _same_path(a: str, b: str) -> bool:

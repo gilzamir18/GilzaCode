@@ -8,10 +8,12 @@ an MCP server of the application. See [PROJECT_DESIGN.md](./PROJECT_DESIGN.md).
 
 ## Status
 
-Phase 3 of 4: the interface (editors, PDF viewer, LaTeX, Markdown, Git, terminal), its
-backend, and Claude Code running in its own panel. Document actions paste their prompts
-into Claude Code unsent; Translate and Look up use `claude -p`. Phase 4 adds the MCP
-tools that let Claude Code drive the editor and the PDF viewer.
+All four phases are done: the interface (editors, PDF viewer, LaTeX, Markdown, Git,
+terminal) and its backend; Claude Code running in its own panel, with document actions
+pasting their prompts into it unsent and Translate / Look up using `claude -p`; and an
+MCP server through which Claude Code reads and drives the window (editor state and
+selection, the PDF pane, opening files, revealing a line in the PDF, compiling LaTeX).
+Packaging and an installer come next.
 
 GilzaCode is free: no account, no subscription. The only thing a user needs besides
 Windows is [Claude Code](https://code.claude.com). Donations are welcome through the

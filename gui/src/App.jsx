@@ -7,7 +7,8 @@ import i18n from './i18n/index.js';
 // Utils
 import { getPreference, setPreference } from './utils/preferences';
 import { UI_SCALE_DEFAULT, UI_SCALE_KEY_STEP, clampUiScale, roundUiScale, viewportPointToApp, viewportPxToApp } from './utils/uiScale';
-import { layoutAfterOpeningFile, layoutAllowsChatToggle, layoutShowsEditor } from './utils/layoutModes';
+import { enterLayout, layoutAfterOpeningFile, layoutAllowsChatToggle, layoutShowsEditor } from './utils/layoutModes';
+import { createIdeCommandRunner } from './utils/ideCommands.js';
 import { DEFAULT_THOUGHT_CONTEXT_TOKENS } from './utils/thoughtTail';
 import {
   clampLogMessage,
@@ -230,6 +231,10 @@ export default function App() {
   // ({ seq, file, line, resolve }; see requestPdfReveal).
   const [pdfRevealRequest, setPdfRevealRequest] = useState(null);
   const pdfRevealSeqRef = useRef(0);
+  // The last compile Claude Code ran through the MCP bridge ({ seq, success, log, ... }).
+  const [externalCompile, setExternalCompile] = useState(null);
+  // Set by the editor panel: what its PDF pane shows (get_pdf_view).
+  const pdfViewProbeRef = useRef(null);
   const [dirPicker, setDirPicker] = useState(null);
   const [alertMessage, setAlertMessage] = useState('');
   // A confirmation the interface itself asks ({ prompt, options, callback }).
@@ -1356,6 +1361,106 @@ export default function App() {
     setPdfRevealRequest({ seq: pdfRevealSeqRef.current, file: filePath, line, resolve: finish });
   });
 
+  // ── Commands from Claude Code (MCP bridge → /api/ide/events) ───────────────
+  const MAX_REPORTED_SELECTION = 20000;
+  const editorStateForClaude = () => {
+    const editor = editorRef.current;
+    const model = editor?.getModel?.();
+    if (!editor || !model || !selectedFile || isBinaryEditorFile(selectedFile)) {
+      return { mode: selectedFile && isBinaryEditorFile(selectedFile) ? 'viewer' : 'none', cursor: null, selection: null };
+    }
+    const position = editor.getPosition?.();
+    const range = editor.getSelection?.();
+    let selection = null;
+    if (range && !range.isEmpty()) {
+      const text = model.getValueInRange(range);
+      selection = {
+        text: text.slice(0, MAX_REPORTED_SELECTION),
+        ...(text.length > MAX_REPORTED_SELECTION ? { truncated: true } : {}),
+        start_line: range.startLineNumber, start_column: range.startColumn,
+        end_line: range.endLineNumber, end_column: range.endColumn,
+      };
+    }
+    return {
+      mode: 'code',
+      cursor: position ? { line: position.lineNumber, column: position.column } : null,
+      selection,
+    };
+  };
+
+  const ideCommandDepsRef = useRef(null);
+  ideCommandDepsRef.current = {
+    getProjectPath: () => documentContextRef.current?.projectPath || '',
+    caseInsensitive: () => isCaseInsensitiveProjectPath,
+    samePath: sameFilePath,
+    openFiles: () => openFiles,
+    selectedFile: () => selectedFile,
+    opensOutside: isUnsupportedSystemFile,
+    hasNoLines: isBinaryEditorFile,
+    isUnsaved: (filePath) => {
+      const live = documentContextRef.current;
+      return unsavedFilePaths({
+        openFiles: [filePath],
+        fileContents: fileContentsRef.current,
+        activeFile: live?.selectedFile,
+        activeContent: live?.getContent(),
+        diskContents: diskFileContentsRef.current,
+        isBinary: isBinaryEditorFile,
+      }).length > 0;
+    },
+    focusTab: (filePath, line) => handleFileSelect(filePath, line, { focusEditor: false }),
+    addBackgroundTab: openBackgroundTab,
+    closeTab: (filePath) => handleCloseTab(filePath),
+    revealInPdf: requestPdfReveal,
+    setLayout: (mode) => enterLayout(mode, {
+      hasOpenDocument: !!selectedFile,
+      setLayoutMode,
+      setActiveSidebarTab,
+      setIsChatVisible,
+      setIsTerminalCollapsed,
+      setActiveBottomTab,
+    }),
+    problems: () => problems,
+    editorState: editorStateForClaude,
+    pdfView: () => pdfViewProbeRef.current?.() || null,
+  };
+  const ideCommandRunnerRef = useRef(null);
+  if (!ideCommandRunnerRef.current) {
+    const deps = new Proxy({}, { get: (_, name) => ideCommandDepsRef.current[name] });
+    ideCommandRunnerRef.current = createIdeCommandRunner(deps);
+  }
+
+  // One stream for the whole window. A command is answered even when refused, so
+  // the MCP tool fails with the reason instead of timing out (gilzacode/ide_control.py).
+  useEffect(() => {
+    const events = new EventSource('/api/ide/events');
+    events.onmessage = (message) => {
+      let data;
+      try { data = JSON.parse(message.data); } catch { return; }
+      if (data.type === 'latex_compiled') {
+        setExternalCompile(data);
+        return;
+      }
+      if (data.type !== 'command') return;
+      const reads = data.action === 'get_editor_state' || data.action === 'get_pdf_view' || data.action === 'get_problems';
+      Promise.resolve(ideCommandRunnerRef.current(data))
+        .then((result) => {
+          if (!reads) {
+            addLog(result.ok ? 'info' : 'error', result.ok
+              ? t('app.claudeCommandDone', 'Claude Code: {{action}} {{path}}', { action: data.action, path: data.args?.path || data.args?.layout || '' })
+              : t('app.claudeCommandRefused', 'Claude Code command {{action}} not carried out: {{error}}', { action: data.action, error: result.error }));
+          }
+          return fetch('/api/ide/result', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...result, id: data.id }),
+          });
+        })
+        .catch((err) => console.error('Failed to answer a Claude Code command', err));
+    };
+    return () => events.close();
+  }, []);
+
   // Keeps only `filePath` open. When it is not the active tab we go through
   // handleFileSelect first, so its content is loaded/persisted exactly like a
   // regular tab switch before the other tabs disappear.
@@ -2196,6 +2301,8 @@ export default function App() {
               onLatexCompileError={handleLatexCompileError}
               onLatexCompileSuccess={handleLatexCompileSuccess}
               pdfRevealRequest={pdfRevealRequest}
+              externalCompile={externalCompile}
+              pdfViewProbeRef={pdfViewProbeRef}
               onFixLatexProblem={handleFixLatexProblem}
               onAskAboutPdf={handleAskAboutPdf}
               onAskAboutMarkdown={handleAskAboutMarkdown}

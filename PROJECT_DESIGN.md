@@ -260,6 +260,59 @@ filter (`screen_text`). That fits a shell, but not a full-screen TUI that
 moves its cursor. Claude Code's screen comes out garbled. An MCP tool that
 reads the panel needs a real terminal emulator (e.g. pyte).
 
+### MCP tools (`mcp_bridge.py`, `ide_control.py`, `routes_ide.py`, `utils/ideCommands.js`)
+
+**The bridge.** `gilzacode-mcp` (`python -m gilzacode.mcp_bridge`) is the MCP
+server Claude Code starts over stdio.
+
+- **Where it comes from:** the panel launches `claude --mcp-config
+  <gilzacode home>/mcp-config.json`, which adds it to the user's own MCP
+  servers. `GILZACODE_PROJECT` names the project folder.
+- **Protocol:** the JSON-RPC is hand-written. It refuses `server/discover` and
+  answers `initialize` with a handshake revision (§2).
+- **Reaching the app:** each tool is one call to the app's local API with the
+  bridge token from `connection.json`, read again on every call, so a
+  restarted app is found. Tool calls run in threads, so a compile does not
+  hold up the others.
+
+**The window answers for itself.** Tools that read or drive the window are
+commands put on `/api/ide/events`. The window performs them with the same
+handlers a click uses (`ideCommands.js`, the runner GilzaBots' agent used) and
+posts the result to `/api/ide/result`.
+
+- **A refusal is an answer:** another project on screen, a file with unsaved
+  edits, no PDF shown. The tool fails with the window's reason, written for
+  the model.
+- **No answer:** without a listening window a command fails at once; an
+  unanswered one fails after 15 s.
+
+**The tools:**
+
+| Tool | What it does |
+|---|---|
+| `get_editor_state` | project, tabs, focused file, cursor, selection (≤ 20 000 chars), unsaved tabs |
+| `get_pdf_view` | the PDF shown, page, page count, the last text selected in it |
+| `open_file` | path, optional line, optional background tab |
+| `close_file` | refused when the tab has unsaved edits |
+| `reveal_in_pdf` | SyncTeX forward search for a `.tex` line |
+| `set_layout` | `ide`, `studio` or `document` |
+| `get_problems` | the Problems panel |
+| `compile_latex` | `/api/ide/compile`: compiles the `.tex` as saved on disk through the same `run_compile` as the editor's button, then publishes `latex_compiled`, so the PDF pane refreshes or shows the error |
+| `list_pdf_annotations` | the annotations stored in a PDF |
+
+- **Selection memory:** the PDF viewer remembers the last non-empty selection
+  made in it, because clicking into Claude Code's terminal can clear the
+  document selection before the model reads it.
+- **Permissions:** the read-only and display-only tools are passed to
+  `--allowedTools`, so Claude Code uses them without asking. `compile_latex`
+  writes files (PDF, auxiliaries) and asks.
+- **Verified with the real Claude Code** in the panel: it called
+  `get_editor_state` (README.md focused), then `open_file` for CLAUDE.md
+  line 3, and the window switched to that tab at that line.
+- **Not done:** the optional channel (§2). Packaging must give the bridge a
+  command that works in a frozen build: today it is `sys.executable -m
+  gilzacode.mcp_bridge`.
+
 ## 9. Roadmap
 
 1. **Window and core server** — done.
@@ -268,11 +321,11 @@ reads the panel needs a real terminal emulator (e.g. pyte).
    install Tectonic, compile, Ctrl+T), with no exception or console error.
 3. **Claude Code integration** — done: the panel runs Claude Code, staged
    prompts are pasted unsent, Translate and Look up call `claude -p`.
-4. **MCP tools**: the bridge (`gilzacode-mcp`, stdio, handshake protocol
-   only), passed to the panel's `claude` with `--mcp-config`. Tools: editor
-   state and selection, PDF selection and page, open a file at a line
-   (`openBackgroundTab`), reveal in PDF (`requestPdfReveal`), compile LaTeX
-   (refreshing the open PDF), SyncTeX, PDF annotations. Optional channel.
+4. **MCP tools** — done (§8, *MCP tools*).
+5. **Next**: packaging and an installer (PyInstaller; the bridge command in a
+   frozen build), porting GilzaBots' browser suite, the optional channel, a
+   terminal emulator for reading the Claude panel, and the leftovers listed
+   in §7.
 
 ## 10. Tests
 

@@ -122,3 +122,35 @@ async def run_headless(prompt: str, *, system_prompt: str, model: str, tools: tu
         detail = err.decode("utf-8", "replace").strip() or stdout.strip() or f"exit status {process.returncode}"
         raise ClaudeCliError(f"Claude Code failed: {detail[-800:]}", kind="failed")
     return parse_stream(stdout)
+
+
+# ── The panel's interactive session ─────────────────────────────────────────
+
+#: MCP tools that only read the window or change what it shows; Claude Code may
+#: use them without asking. compile_latex writes files, so it asks.
+PRE_ALLOWED_TOOLS = ("get_editor_state", "get_pdf_view", "get_problems", "list_pdf_annotations",
+                     "open_file", "close_file", "reveal_in_pdf", "set_layout")
+
+
+def write_mcp_config() -> str:
+    """Write ``<gilzacode home>/mcp-config.json`` naming the GilzaCode bridge; return its path."""
+    import sys
+
+    from gilzacode.paths import gilzacode_home, write_text_atomic
+    path = gilzacode_home() / "mcp-config.json"
+    write_text_atomic(path, json.dumps({"mcpServers": {"gilzacode": {
+        "command": sys.executable, "args": ["-m", "gilzacode.mcp_bridge"]}}}, indent=2))
+    return str(path)
+
+
+def claude_session_argv() -> list[str]:
+    """`claude` with the GilzaCode bridge added to the user's own MCP servers."""
+    return [find_claude(), "--mcp-config", write_mcp_config(),
+            "--allowedTools", ",".join(f"mcp__gilzacode__{name}" for name in PRE_ALLOWED_TOOLS)]
+
+
+def claude_session_env(project_path: str) -> dict:
+    from gilzacode.external_tools import environment_with_managed_tools
+    env = environment_with_managed_tools(child_environment())
+    env["GILZACODE_PROJECT"] = project_path
+    return env

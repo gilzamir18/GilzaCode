@@ -319,6 +319,19 @@ const PdfPreview = forwardRef(({ chatModel = '', base64Pdf, sourceUrl, directUrl
   // empty or lives outside the PDF surface.
   const readPdfSelection = () => readSelectionWithin(containerRef.current);
 
+  // The last non-empty selection made in this viewer. Clicking into Claude Code's
+  // terminal to ask about it can clear the document selection before the model
+  // reads it (get_pdf_view), so the viewer remembers it.
+  const lastSelectionRef = useRef('');
+  useEffect(() => {
+    const remember = () => {
+      const text = readSelectionWithin(containerRef.current);
+      if (text) lastSelectionRef.current = text;
+    };
+    document.addEventListener('selectionchange', remember);
+    return () => document.removeEventListener('selectionchange', remember);
+  }, []);
+
   // ── Annotations ────────────────────────────────────────────────────────
   // Marks are stored inside the PDF itself (see gilzabots/pdf_annotations.py), so
   // they interoperate with Zotero, Acrobat and any other reader. That storage is
@@ -1335,7 +1348,12 @@ const PdfPreview = forwardRef(({ chatModel = '', base64Pdf, sourceUrl, directUrl
 
   // Expose scroll method to parent for Forward Search (Editor -> PDF)
    useImperativeHandle(ref, () => ({
-    scrollTo: scrollToPosition
+    scrollTo: scrollToPosition,
+    getViewState: () => ({
+      page: currentPage,
+      total_pages: numPages || 0,
+      selected_text: readPdfSelection() || lastSelectionRef.current,
+    }),
   }));
 
   const handlePageDoubleClick = async (e, pageIndex) => {

@@ -117,12 +117,27 @@ def _format_compile_debug(payload: dict) -> str:
     return "\n".join(lines)
 
 
+class CompileRequestError(ValueError):
+    """A compile request missing what it needs."""
+
+
 @routes.post("/api/latex/compile")
 async def compile_document(request: web.Request) -> web.Response:
     """Compile the editor's buffer: the whole document, a draft, or the edited part only."""
+    try:
+        result = await run_compile(request.app, await read_json(request))
+    except CompileRequestError as exc:
+        return error(400, str(exc))
+    return web.json_response(result)
+
+
+async def run_compile(app: web.Application, data: dict) -> dict:
+    """The compile behind ``/api/latex/compile``, shared with the MCP tool (``routes_ide``).
+
+    `data` has the endpoint's fields. Remembers the PDF for ``/api/latex/pdf``.
+    """
     from gilzacode import latex_compiler
     started = time.perf_counter()
-    data = await read_json(request)
     content = data.get("content", "")
     file_path = data.get("filePath", "")
     project_path = data.get("projectPath", "")
@@ -132,7 +147,7 @@ async def compile_document(request: web.Request) -> web.Response:
     draft = bool(data.get("draft", False))
     synctex = (not draft) or _synctex_in_draft()
     if not content:
-        return error(400, "content is required")
+        raise CompileRequestError("content is required")
 
     debug = {"debug_version": COMPILE_DEBUG_VERSION, "partial": partial, "draft": draft,
              "synctex_enabled": synctex, "request_file_path": file_path, "project_path": project_path,
@@ -207,13 +222,13 @@ async def compile_document(request: web.Request) -> web.Response:
     if not result.get("success"):
         result["log"] = (f"{_format_compile_debug(debug)}\n\nCompilation target: {main_file or '(unresolved)'}\n\n"
                          f"{result.get('log') or ''}")
-    _state(request).remember(result)
+    app[STATE_KEY].remember(result)
     if result.get("success") and result.get("pdf_path"):
         result["pdf_url"] = f"/api/latex/pdf?ts={int(time.time() * 1000)}"
     timing = result.get("timing") or {}
     timing["request_seconds"] = round(time.perf_counter() - started, 3)
     result["timing"] = timing
-    return web.json_response(result)
+    return result
 
 
 @routes.get("/api/latex/pdf-source")
