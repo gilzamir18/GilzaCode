@@ -21,6 +21,7 @@ import os
 
 from aiohttp import web
 
+from gilzacode.files import is_within
 from gilzacode.server.app import STREAMING_PATHS, error, read_json
 from gilzacode.terminal_manager import TerminalSession, screen_text
 
@@ -62,6 +63,17 @@ def _new_session(term_id: str, project_path: str) -> TerminalSession:
 
 def _same_path(a: str, b: str) -> bool:
     return os.path.normcase(os.path.abspath(a)) == os.path.normcase(os.path.abspath(b))
+
+
+def close_sessions_in(app: web.Application, folder: str) -> None:
+    """Close every session (shell tabs and Claude Code) started in `folder` or below it.
+
+    Windows cannot delete a folder that is a process' working directory, so a
+    project's folder can only be deleted once the sessions running in it are gone.
+    """
+    for session in list(app[SESSIONS_KEY].values()):
+        if is_within(session.project_path, folder):
+            session.close()
 
 
 def _session_for(request: web.Request, term_id: str, project_path: str | None,

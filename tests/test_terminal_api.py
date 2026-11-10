@@ -70,3 +70,18 @@ async def test_unknown_terminal_ids_and_missing_projects_are_refused(client, pro
     assert (await client.post("/api/terminal/input", json={"term_id": "main", "text": "x"})).status == 400
     response = await client.get("/api/terminal/output", params={"term_id": "main-99", "projectPath": str(project)})
     assert response.status == 404  # reading never starts a shell
+
+
+async def test_deleting_a_project_closes_the_terminals_running_in_its_folder(client, project):
+    """Windows refuses to delete a folder that is a process' working directory."""
+    await client.post("/api/projects/import", json={"project_path": str(project)})
+    stream = await client.get("/api/terminal/stream", params={"term_id": "main-9", "projectPath": str(project)})
+    try:
+        await client.post("/api/terminal/input", json={
+            "term_id": "main-9", "projectPath": str(project), "text": "Write-Output ('rea' + 'dy')\r"})
+        await _read_until(stream, "ready")
+        response = await client.post("/api/projects/delete", json={"name": "proj", "delete_dir": True})
+        assert response.status == 200, await response.text()
+        assert not project.exists()
+    finally:
+        stream.close()

@@ -200,6 +200,25 @@ async def test_an_exited_session_is_not_restarted_by_reconnecting(client, projec
     assert status["running"] is False and status["exited"] is True
 
 
+async def test_deleting_a_project_folder_closes_only_the_sessions_in_it(client, project):
+    await client.post("/api/projects/import", json={"project_path": str(project)})
+    sibling = project.parent / (project.name + "-other")  # shares the prefix, not the folder
+    sibling.mkdir()
+    sessions = client.server.app[SESSIONS_KEY]
+    sessions[CLAUDE_ID] = claude = FakeSession(str(project))
+    sessions["main"] = inside = FakeSession(str(project / "figs"))
+    sessions["main-2"] = elsewhere = FakeSession(str(sibling))
+
+    await client.post("/api/projects/delete", json={"name": "proj"})  # unregistering only
+    assert claude.is_running and inside.is_running
+
+    await client.post("/api/projects/import", json={"project_path": str(project)})
+    response = await client.post("/api/projects/delete", json={"name": "proj", "delete_dir": True})
+    assert response.status == 200 and not project.exists()
+    assert not claude.is_running and not inside.is_running
+    assert elsewhere.is_running
+
+
 async def test_the_claude_id_cannot_be_started_as_a_shell_tab(client, project):
     response = await client.post("/api/terminal/start", json={"term_id": CLAUDE_ID, "projectPath": str(project)})
     assert response.status == 400

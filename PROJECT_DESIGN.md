@@ -103,7 +103,12 @@ them, so the front-end ports unchanged. Projects moved from
   localStorage) can change between launches (GilzaBots §2.1).
 - `projects.json`: the project registry. A project is a name and a folder.
   A registry that cannot be read is reported and never overwritten. Removing a
-  project never deletes its folder unless `delete_dir` is requested.
+  project never deletes its folder unless `delete_dir` is requested. Deleting
+  the folder first closes the terminal sessions started in it (shell tabs and
+  Claude Code, `routes_terminal.close_sessions_in`), with no await between that
+  and the deletion: Windows refuses to delete a folder that is a process'
+  working directory (`WinError 32`). Closing the PTY also ends the programs
+  started from it.
 - `connection.json`: see §3.
 - `webview/`: the WebView2 profile.
 - Writes are atomic (temporary file + `os.replace`).

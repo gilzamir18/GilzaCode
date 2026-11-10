@@ -13,6 +13,7 @@ from gilzacode import projects, settings
 from gilzacode.cloud.base import CloudError
 from gilzacode.cloud.service import MANAGER
 from gilzacode.server.app import error, read_json
+from gilzacode.server.routes_terminal import close_sessions_in
 
 routes = web.RouteTableDef()
 
@@ -82,8 +83,13 @@ async def delete_project(request: web.Request) -> web.Response:
                 cloud_result = await asyncio.to_thread(MANAGER.delete_remote_copy, project.project_path)
             except CloudError as exc:
                 return error(400, f"Could not delete the cloud copy, so nothing was removed: {exc}")
+    delete_dir = bool(data.get("delete_dir", False))
+    if project and project.project_path and delete_dir:
+        # No await from here to the deletion, so a reconnecting terminal cannot
+        # start a new shell in the folder in between.
+        close_sessions_in(request.app, project.project_path)
     try:
-        project = projects.remove(name, delete_folder=bool(data.get("delete_dir", False)))
+        project = projects.remove(name, delete_folder=delete_dir)
     except projects.ProjectError as exc:
         return error(400, str(exc))
     except OSError as exc:
