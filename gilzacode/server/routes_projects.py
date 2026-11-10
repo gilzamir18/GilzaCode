@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 import string
 import sys
@@ -9,6 +10,8 @@ import sys
 from aiohttp import web
 
 from gilzacode import projects, settings
+from gilzacode.cloud.base import CloudError
+from gilzacode.cloud.service import MANAGER
 from gilzacode.server.app import error, read_json
 
 routes = web.RouteTableDef()
@@ -61,10 +64,26 @@ async def update_project(request: web.Request) -> web.Response:
 
 @routes.post("/api/projects/delete")
 async def delete_project(request: web.Request) -> web.Response:
-    """Unregister a project; its folder is deleted only with ``delete_dir: true``."""
+    """Unregister a project; its folder is deleted only with ``delete_dir: true``.
+
+    ``delete_cloud: true`` also deletes its cloud copy, first and able to stop
+    the whole deletion: if that copy cannot be removed nothing local is either,
+    so the user can retry with the project still in place.
+    """
     data = await read_json(request)
+    name = data.get("name", "")
+    project = projects.get(name) if name else None
+    cloud_result = None
+    if project and project.project_path:
+        # A deleted project must not keep a background sync alive.
+        MANAGER.deactivate(project.project_path)
+        if data.get("delete_cloud"):
+            try:
+                cloud_result = await asyncio.to_thread(MANAGER.delete_remote_copy, project.project_path)
+            except CloudError as exc:
+                return error(400, f"Could not delete the cloud copy, so nothing was removed: {exc}")
     try:
-        project = projects.remove(data.get("name", ""), delete_folder=bool(data.get("delete_dir", False)))
+        project = projects.remove(name, delete_folder=bool(data.get("delete_dir", False)))
     except projects.ProjectError as exc:
         return error(400, str(exc))
     except OSError as exc:
@@ -72,7 +91,7 @@ async def delete_project(request: web.Request) -> web.Response:
     current = settings.load()
     if current.get("last_active_project") == project.name:
         settings.save({"last_active_project": ""})
-    return web.json_response({"success": True})
+    return web.json_response({"success": True, "cloud": cloud_result})
 
 
 @routes.post("/api/settings/last-project")

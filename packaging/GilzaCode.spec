@@ -21,6 +21,11 @@ datas = [
     (TOOLS, "bin"),
     (os.path.join(ROOT, "uninstall.ps1"), "."),
 ]
+# The Google OAuth client for Cloud sync, injected by scripts/embed_google_client.py
+# (git-ignored). Without it the app still runs; connecting needs a user-supplied client.
+BUNDLED_CLIENT = os.path.join(ROOT, "gilzacode", "cloud", "providers", "bundled_google_client.json")
+if os.path.isfile(BUNDLED_CLIENT):
+    datas.append((BUNDLED_CLIENT, os.path.join("gilzacode", "cloud", "providers")))
 binaries = [(os.path.join(os.path.dirname(winpty.__file__), "winpty-agent.exe"), "winpty")]
 hiddenimports = []
 for package in ("aiohttp", "webview", "pythonnet", "clr_loader", "winpty", "pymupdf", "onnxruntime"):

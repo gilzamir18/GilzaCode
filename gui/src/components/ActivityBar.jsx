@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Bot, Files, GitBranch, Settings, LayoutGrid, LayoutTemplate, Terminal, Columns2 } from 'lucide-react';
+import { Bot, Cloud, CloudOff, Files, GitBranch, Settings, LayoutGrid, LayoutTemplate, Terminal, Columns2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   ACTIVITY_BAR_DEFAULT_DENSITY,
@@ -24,7 +24,9 @@ export default function ActivityBar({
   setIsTerminalCollapsed,
   setActiveBottomTab,
   onOpenProjectSettings,
-  hasActiveProject
+  hasActiveProject,
+  onOpenCloudSync,
+  cloudEnabled,
 }) {
   const { t } = useTranslation();
   // Layouts that dock the explorer/source-control sidebar to their left, and so
@@ -109,7 +111,7 @@ export default function ActivityBar({
 
   // A tier change resizes the content, not the bar, so the fades are recomputed
   // after it lands.
-  useEffect(() => { measureFade(); }, [densityName, gitChangesCount, measureFade]);
+  useEffect(() => { measureFade(); }, [densityName, gitChangesCount, cloudEnabled, measureFade]);
 
   return (
     <div
@@ -225,6 +227,20 @@ export default function ActivityBar({
       </div>
 
       <div className="vscode-activitybar-bottom">
+        <button
+          onClick={() => { if (hasActiveProject) onOpenCloudSync?.(); }}
+          className="vscode-activitybar-btn"
+          title={!hasActiveProject
+            ? t('activityBar.cloudSyncDisabled', 'Open a project to sync it with the cloud')
+            : cloudEnabled
+              ? t('activityBar.cloudSyncOn', 'Cloud sync (on)')
+              : t('activityBar.cloudSync', 'Cloud sync')}
+          disabled={!hasActiveProject}
+          style={{ opacity: hasActiveProject ? 1 : 0.5, cursor: hasActiveProject ? 'pointer' : 'not-allowed' }}
+        >
+          {cloudEnabled ? <Cloud size={density.secondaryIconSize} /> : <CloudOff size={density.secondaryIconSize} />}
+        </button>
+
         <button
           onClick={(e) => { if (hasActiveProject) onOpenProjectSettings?.(e); }}
           className="vscode-activitybar-btn"

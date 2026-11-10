@@ -71,6 +71,19 @@ foreach ($tool in @("tectonic.exe", "pandoc.exe")) {
     if (-not (Test-Path (Join-Path $tools $tool))) { throw "$tool is missing from $tools." }
 }
 
+Write-Host "`n[3.5/5] Google OAuth client for Cloud sync"
+# With GILZACODE_GDRIVE_CLIENT_ID/_SECRET set, the build embeds the client and
+# "Connect with Google" is one click. Without them the app still works, and a
+# client injected earlier (the git-ignored file exists) is embedded as is.
+if ($env:GILZACODE_GDRIVE_CLIENT_ID) {
+    Invoke-Checked { python scripts\embed_google_client.py --from-env } "embed_google_client.py"
+}
+if (Test-Path "gilzacode\cloud\providersundled_google_client.json") {
+    Write-Host "The Google OAuth client is embedded."
+} else {
+    Write-Warning "No Google OAuth client: Cloud sync in this build needs a user-supplied client."
+}
+
 Write-Host "`n[4/5] PyInstaller"
 Invoke-Checked {
     python -m PyInstaller packaging\GilzaCode.spec --noconfirm --clean --distpath dist --workpath build\pyinstaller

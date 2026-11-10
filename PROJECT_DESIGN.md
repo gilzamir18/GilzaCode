@@ -14,7 +14,8 @@ application. GilzaBots is unchanged; GilzaCode copies what it needs from it.
 GilzaCode.exe (pywebview + WebView2)
  ├─ Interface: React/Vite, reused from GilzaBots' gui_src (phase 2)
  ├─ Loopback server (aiohttp): files, projects, settings, clipboard,
- │    LaTeX/Tectonic, SyncTeX, PDF annotations, Git, terminal PTY, speech
+ │    LaTeX/Tectonic, SyncTeX, PDF annotations, Git, terminal PTY, speech,
+ │    cloud sync (Google Drive)
  └─ connection file ~/.gilzacode/connection.json (url + bridge token)
         ▲  HTTP, Authorization: Bearer <bridge token>
         │
@@ -172,7 +173,7 @@ reports a dangling name when the line runs; the cut was driven by it.
 
 - **Removed**: chat and chat list, agent runs and their windows (plan review,
   ask, interactive command), slash commands, models, providers and
-  connections, hardware, monitors, MCP connectors, asset store, cloud sync,
+  connections, hardware, monitors, MCP connectors, asset store,
   onboarding, tutorial, dictation, the Agent Thinking tab, agent change
   badges, and the `chat-bottom` and `review` layouts. Settings lost the
   agent sections (reasoning size, prompt evolution, image generation, Docker
@@ -327,7 +328,65 @@ posts the result to `/api/ide/result`.
   command that works in a frozen build: today it is `sys.executable -m
   gilzacode.mcp_bridge`.
 
-## 9. Packaging and installation (`build_exe.ps1`, `packaging/`, `install.ps1`, `uninstall.ps1`)
+## 9. Cloud sync (`gilzacode/cloud/`, `server/routes_cloud.py`)
+
+Ported from GilzaBots' cloud sync, **without the conversation export**:
+GilzaBots mirrored each project's chats through `.gilzabots/session/chats.json`
+and the mobile app's device journals. GilzaCode has no conversations of its own
+(Claude Code keeps its sessions outside the project), so `chats.py`, the
+journals and the `include_chats` setting are gone.
+
+**What is unchanged from GilzaBots:**
+- the three-way engine (`engine.py`) against a per-project baseline
+  (`.gilzacode/cloud/state.json`), with conflict copies, a refusal to delete a
+  large share of the working copy without confirmation, and cancellation that
+  keeps what already moved;
+- the providers: Google Drive (`drive.file` scope, PKCE loopback OAuth,
+  stdlib-only) and `local_folder`, the offline provider the tests use;
+- the scanner's exclusions (`.env` unless opted in, `node_modules`, the sync's
+  own state), plus GilzaCode's `.gilzacode/latex_compile_debug.json`, which
+  holds absolute paths of one machine;
+- cloning a mirrored project onto another machine, and deleting the cloud copy
+  together with the project.
+
+**What changed:**
+- **A local watch.** GilzaBots announced every write from its own endpoints and
+  had no filesystem watcher. In GilzaCode most edits come from Claude Code,
+  which writes straight to disk where no endpoint sees them. Each synced
+  project therefore also gets a stat-only walk every `LOCAL_WATCH_SECONDS`
+  (10 s): it compares paths, sizes and mtimes of the sync set (excluded files
+  never count) and announces a change through the same debounced trigger. It
+  announces changes seen while a pass runs too, since the edit may have landed
+  after that pass scanned. The file endpoints still announce their own writes,
+  so an editor save does not wait for the walk.
+- **Projects** are GilzaCode's JSON registry: a clone registers the folder
+  through `projects.add`, the delete endpoint is `/api/projects/delete` with
+  `delete_cloud`, and "already mirrored here" is read from that registry.
+- **Names:** Drive mirrors live under a `GilzaCode` folder (GilzaBots used
+  `GilzaBots`, so projects mirrored by GilzaBots are not listed), credentials in
+  `<home>/cloud`, the environment override is `GILZACODE_GDRIVE_CLIENT_ID` /
+  `GILZACODE_GDRIVE_CLIENT_SECRET`.
+
+**The Google OAuth client.** A build normally embeds a "Desktop app" client
+(`gilzacode/cloud/providers/bundled_google_client.json`, git-ignored), so the
+user only presses Connect. `scripts/embed_google_client.py` writes it from the
+environment, from arguments, or from the JSON the Google Cloud console
+downloads; `build_exe.ps1` runs it when `GILZACODE_GDRIVE_CLIENT_ID` is set and
+the spec bundles the file when it exists. A build without it still works: the
+panel asks for a user-supplied client. The client secret of a desktop client is
+not confidential (Google's own guidance), but it is kept out of the repository
+anyway.
+
+**Lifecycle.** `GET /api/cloud/status` is what starts a project's background
+sync, as in GilzaBots: the interface asks for it when a project becomes
+active. The app's cleanup stops every background task.
+
+**Interface.** GilzaBots' panels are restored without the conversations
+toggle: `CloudSyncModal` (activity bar, disabled without a project),
+`CloudDownloadModal` (explorer header), the status-bar indicator, the
+explorer's per-file badges and the cloud option of the delete dialog.
+
+## 10. Packaging and installation (`build_exe.ps1`, `packaging/`, `install.ps1`, `uninstall.ps1`)
 
 Adapted from GilzaBots' Windows packaging.
 
@@ -378,7 +437,7 @@ administrator rights.
 - the global data goes only with `-Purge` and a typed confirmation;
 - project folders are never touched.
 
-## 10. Roadmap
+## 11. Roadmap
 
 1. **Window and core server** — done.
 2. **Interface and document backend** — done. Verified in the real window
@@ -387,12 +446,13 @@ administrator rights.
 3. **Claude Code integration** — done: the panel runs Claude Code, staged
    prompts are pasted unsent, Translate and Look up call `claude -p`.
 4. **MCP tools** — done (§8, *MCP tools*).
-5. **Packaging** — done (§9).
-6. **Next**: a GitHub repository with tagged releases (for `install.ps1`'s
+5. **Packaging** — done (§10).
+6. **Cloud sync** — done (§9).
+7. **Next**: a GitHub repository with tagged releases (for `install.ps1`'s
    default source), porting GilzaBots' browser suite, the optional channel, a
    terminal emulator for reading the Claude panel, and the leftovers in §7.
 
-## 11. Tests
+## 12. Tests
 
 - `python -m pytest`. Server tests run a real aiohttp server on a port that
   matches its session, since Host is checked, and every test gets its own
@@ -409,3 +469,7 @@ administrator rights.
 - `cd gui; npm run test:wysiwyg` runs the copied front-end suites (editor
   round-trips, LaTeX parsing, layouts, preferences). `npx eslint src` must
   report no errors.
+- The cloud tests are GilzaBots' (engine, scanner, OAuth, transport, clone,
+  cancel, delete, progress, Google client) against `local_folder`, with the
+  endpoint tests rewritten for the aiohttp client and the conversation tests
+  dropped; `test_cloud_local_watch.py` covers the local watch.

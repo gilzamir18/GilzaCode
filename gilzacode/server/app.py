@@ -125,8 +125,9 @@ def default_static_dir() -> Path | None:
 
 
 def create_app(session: LocalSession, static_dir: Path | None = None) -> web.Application:
-    from gilzacode.server import (routes_files, routes_git, routes_ide, routes_latex, routes_pdf, routes_projects,
-                                  routes_claude, routes_settings, routes_snippets, routes_speech, routes_system, routes_terminal)
+    from gilzacode.server import (routes_claude, routes_cloud, routes_files, routes_git, routes_ide, routes_latex,
+                                  routes_pdf, routes_projects, routes_settings, routes_snippets, routes_speech,
+                                  routes_system, routes_terminal)
 
     app = web.Application(
         middlewares=[headers_middleware, session_middleware, ordering_middleware],
@@ -136,8 +137,8 @@ def create_app(session: LocalSession, static_dir: Path | None = None) -> web.App
     app[ORDER_LOCK_KEY] = asyncio.Lock()
     app[STATIC_DIR_KEY] = static_dir
     app.router.add_get("/api/session", session_check)
-    for module in (routes_claude, routes_files, routes_git, routes_ide, routes_latex, routes_pdf, routes_projects, routes_settings,
-                   routes_snippets, routes_speech, routes_system, routes_terminal):
+    for module in (routes_claude, routes_cloud, routes_files, routes_git, routes_ide, routes_latex, routes_pdf,
+                   routes_projects, routes_settings, routes_snippets, routes_speech, routes_system, routes_terminal):
         app.router.add_routes(module.routes)
         if hasattr(module, "setup"):
             module.setup(app)

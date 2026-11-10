@@ -17,6 +17,7 @@ from aiohttp import web
 from gilzacode import settings
 from gilzacode.files import PathOutsideProject, file_tree, normalize_rel, resolve, unique_target
 from gilzacode.server.app import error, read_json
+from gilzacode.server.routes_cloud import notify_change
 
 routes = web.RouteTableDef()
 
@@ -106,6 +107,7 @@ async def write_file(request: web.Request) -> web.Response:
             handle.write(content)
     except OSError as exc:
         return error(500, str(exc))
+    notify_change(project_path)
     return web.json_response({"success": True})
 
 
@@ -125,6 +127,7 @@ async def make_dir(request: web.Request) -> web.Response:
         os.makedirs(full, exist_ok=True)
     except OSError as exc:
         return error(500, str(exc))
+    notify_change(project_path)
     return web.json_response({"success": True})
 
 
@@ -154,6 +157,7 @@ async def copy_path(request: web.Request) -> web.Response:
         await asyncio.to_thread(work)
     except OSError as exc:
         return error(500, str(exc))
+    notify_change(project_path)
     return web.json_response({"success": True, "targetPath": normalize_rel(os.path.relpath(full_target, project_path))})
 
 
@@ -194,6 +198,7 @@ async def import_file(request: web.Request) -> web.Response:
         return error(500, str(exc))
     if written is None:
         return error(400, "projectPath and file are required")
+    notify_change(project_abs)
     return web.json_response({"success": True, "filePath": normalize_rel(os.path.relpath(written, project_abs))})
 
 
@@ -216,6 +221,7 @@ async def delete_path(request: web.Request) -> web.Response:
             os.remove(full)
     except OSError as exc:
         return error(500, str(exc))
+    notify_change(project_path)
     return web.json_response({"success": True})
 
 
@@ -237,6 +243,7 @@ async def rename_path(request: web.Request) -> web.Response:
         os.rename(full_old, full_new)
     except OSError as exc:
         return error(500, str(exc))
+    notify_change(project_path)
     return web.json_response({"success": True})
 
 

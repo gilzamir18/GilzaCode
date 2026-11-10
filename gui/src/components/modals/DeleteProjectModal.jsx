@@ -2,9 +2,13 @@ import React, { useState } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { AlertTriangle } from 'lucide-react';
 
-export default function DeleteProjectModal({ projectToDelete, onCancel, onConfirm }) {
+// `cloudLink` comes from /api/cloud/link: when the project has a copy in the
+// cloud, the dialog offers to delete that too. Off by default — removing a
+// project from this computer is not a reason to remove it everywhere.
+export default function DeleteProjectModal({ projectToDelete, cloudLink, onCancel, onConfirm }) {
   const { t } = useTranslation();
   const [deleteDir, setDeleteDir] = useState(false);
+  const [deleteCloud, setDeleteCloud] = useState(false);
 
   if (!projectToDelete) return null;
 
@@ -43,9 +47,36 @@ export default function DeleteProjectModal({ projectToDelete, onCancel, onConfir
           {t('deleteProjectModal.deleteDir', 'Also delete the directory associated with the project')}
         </label>
 
+        {cloudLink?.linked && (
+          <div style={{ marginTop: '-12px', marginBottom: '24px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--vscode-descriptionForeground, #a0a0c0)', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={deleteCloud}
+                onChange={(e) => setDeleteCloud(e.target.checked)}
+                style={{ cursor: 'pointer' }}
+              />
+              {t('deleteProjectModal.deleteCloud', {
+                defaultValue: 'Also delete the copy in the cloud ({{provider}}: {{folder}})',
+                provider: cloudLink.provider_name || cloudLink.provider,
+                folder: cloudLink.remote_folder,
+              })}
+            </label>
+            {deleteCloud && (
+              <p style={{ fontSize: '12px', color: 'var(--vscode-descriptionForeground, #a0a0c0)', lineHeight: 1.5, margin: '6px 0 0 24px' }}>
+                {cloudLink.recoverable
+                  ? t('deleteProjectModal.deleteCloudTrash', 'The folder goes to the trash, where it can be restored for a limited time.')
+                  : t('deleteProjectModal.deleteCloudPermanent', 'This storage has no trash: the folder is deleted permanently.')}
+                {' '}
+                {t('deleteProjectModal.deleteCloudOtherMachines', 'Other computers that sync this project stop syncing it and keep their own copy.')}
+              </p>
+            )}
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
           <button
-            onClick={() => { setDeleteDir(false); onCancel(); }}
+            onClick={() => { setDeleteDir(false); setDeleteCloud(false); onCancel(); }}
             className="vscode-button"
             style={{
               background: 'transparent', border: '1px solid var(--vscode-border, #4c4c6c)',
@@ -58,8 +89,9 @@ export default function DeleteProjectModal({ projectToDelete, onCancel, onConfir
           </button>
           <button
             onClick={() => {
-              onConfirm(deleteDir);
+              onConfirm(deleteDir, !!cloudLink?.linked && deleteCloud);
               setDeleteDir(false);
+              setDeleteCloud(false);
             }}
             style={{
               padding: '8px 24px', borderRadius: '8px', border: 'none',

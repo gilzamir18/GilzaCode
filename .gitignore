@@ -7,3 +7,4 @@ dist/
 *.egg-info/
 node_modules/
 gilzacode/static/
+gilzacode/cloud/providers/bundled_google_client.json

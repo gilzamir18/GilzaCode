@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Folder, File, ChevronRight, ChevronDown } from 'lucide-react';
+import CloudFileBadge from './CloudFileBadge';
 import InlineCreateNode from './InlineCreateNode';
 import { isSameTreePath, treePathContains } from '../utils/inlineCreate';
 import { markerPathKey } from '../utils/fileMarkers';
@@ -23,6 +24,7 @@ export default function FileNode({
   renamingNodePath,
   setRenamingNodePath,
   executeRenameNode,
+  cloudFileStates,
   pendingCreate,
   onInlineCreateSubmit,
   onInlineCreateCancel,
@@ -30,6 +32,7 @@ export default function FileNode({
   const isDir = node.isDirectory;
   // The tree carries OS-separated relative paths; the sync state is keyed by
   // POSIX ones, which is the only place the two representations meet.
+  const cloudState = cloudFileStates?.[String(node.path).replace(/\\/g, '/')];
   const [isOpen, setIsOpen] = useState(false);
   const isRenaming = renamingNodePath === node.path;
   const [editName, setEditName] = useState(node.name);
@@ -186,6 +189,7 @@ export default function FileNode({
           {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           <Folder size={14} className="text-white" style={{ color: 'var(--vscode-fg-folder)', flexShrink: 0 }} />
           {isRenaming ? renderRenameInput() : <span className="truncate">{node.name}</span>}
+          <CloudFileBadge state={cloudState} />
         </div>
         {isOpen && (
           <div style={{ paddingLeft: '12px', borderLeft: '1px solid var(--vscode-border)', marginLeft: '14px' }}>
@@ -215,6 +219,7 @@ export default function FileNode({
                 renamingNodePath={renamingNodePath}
                 setRenamingNodePath={setRenamingNodePath}
                 executeRenameNode={executeRenameNode}
+                cloudFileStates={cloudFileStates}
                 pendingCreate={pendingCreate}
                 onInlineCreateSubmit={onInlineCreateSubmit}
                 onInlineCreateCancel={onInlineCreateCancel}
@@ -247,6 +252,7 @@ export default function FileNode({
           {isUnsaved && <span title={t('explorer.unsaved', 'Unsaved changes')}> *</span>}
         </span>
       )}
+      <CloudFileBadge state={cloudState} />
     </div>
   );
 }

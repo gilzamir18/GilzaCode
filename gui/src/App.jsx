@@ -46,6 +46,8 @@ import ConfirmModal from './components/modals/ConfirmModal';
 import AlertModal from './components/modals/AlertModal';
 import DirPickerModal from './components/modals/DirPickerModal';
 import DeleteProjectModal from './components/modals/DeleteProjectModal';
+import CloudSyncModal from './components/modals/CloudSyncModal';
+import CloudDownloadModal from './components/modals/CloudDownloadModal';
 import { useCustomDialog } from './components/modals/CustomDialogProvider';
 
 // How long the editor panel gets to carry out a reveal-in-PDF request, loading
@@ -306,6 +308,17 @@ export default function App() {
   const [editingProject, setEditingProject] = useState(null);
   const [editProjError, setEditProjError] = useState('');
   const [projectToDelete, setProjectToDelete] = useState(null);
+  // What /api/cloud/link said about the project being deleted, so the dialog
+  // can offer to delete its cloud copy too.
+  const [deleteCloudLink, setDeleteCloudLink] = useState(null);
+  const [isCloudSyncOpen, setIsCloudSyncOpen] = useState(false);
+  const [isCloudDownloadOpen, setIsCloudDownloadOpen] = useState(false);
+  const [cloudDownloadParent, setCloudDownloadParent] = useState('');
+  // Mirrors the project's cloud status so the activity bar and status bar can
+  // show it without opening the panel.
+  const [cloudStatus, setCloudStatus] = useState(null);
+  // Per-file sync state for the explorer's badges, keyed by POSIX path.
+  const [cloudFileStates, setCloudFileStates] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // ── Global Models ─────────────────────────────────────────────────────────
@@ -912,6 +925,61 @@ export default function App() {
     gitStatusRequestRef.current = request;
     return request;
   };
+
+  // After a pass that downloaded or a resolved conflict, the explorer and the
+  // Git view show what is on disk now.
+  const refreshWorkspaceFiles = async () => {
+    await Promise.all([fetchFiles(), fetchGitStatus()]);
+  };
+
+  // Cloud sync status for the active project. Fetching it is also what
+  // registers the project with the backend's sync scheduler, so this runs
+  // whenever a project becomes active — not only when the panel is open.
+  const refreshCloudStatus = useCallback(async () => {
+    if (!activeProject?.project_path) { setCloudStatus(null); return; }
+    try {
+      const params = new URLSearchParams({
+        projectPath: activeProject.project_path,
+        project: activeProject.name || '',
+      });
+      const res = await fetch(`/api/cloud/status?${params}`);
+      const payload = await res.json();
+      setCloudStatus(payload.error ? null : payload);
+    } catch (_) {
+      setCloudStatus(null);
+    }
+  }, [activeProject?.project_path, activeProject?.name]);
+
+  // Which files are synced, waiting, moving or conflicted — the explorer marks
+  // each one, the way a desktop Drive client does.
+  const refreshCloudFileStates = useCallback(async () => {
+    if (!activeProject?.project_path) { setCloudFileStates(null); return; }
+    try {
+      const params = new URLSearchParams({ projectPath: activeProject.project_path });
+      const res = await fetch(`/api/cloud/file-states?${params}`);
+      const payload = await res.json();
+      setCloudFileStates(payload?.enabled ? payload.states : null);
+    } catch (_) {
+      setCloudFileStates(null);
+    }
+  }, [activeProject?.project_path]);
+
+  useEffect(() => { refreshCloudStatus(); }, [refreshCloudStatus]);
+
+  const cloudPassRunning = !!cloudStatus?.syncing || !!cloudStatus?.progress?.active;
+
+  useEffect(() => {
+    // A background pass finishes without telling the front-end, so the status
+    // line is refreshed on a tick. Polling only while sync is on keeps a
+    // project that never uses the feature from paying for it. While a pass is
+    // actually running the tick speeds up: that is when the footer is showing
+    // which file is moving, and a 20 s refresh would make it a slideshow.
+    if (!cloudStatus?.settings?.enabled) { setCloudFileStates(null); return undefined; }
+    const tick = () => { refreshCloudStatus(); refreshCloudFileStates(); };
+    tick();
+    const timer = setInterval(tick, cloudPassRunning ? 1000 : 20000);
+    return () => clearInterval(timer);
+  }, [cloudStatus?.settings?.enabled, cloudPassRunning, refreshCloudStatus, refreshCloudFileStates]);
 
   const rememberLastActiveProject = (projectName) => {
     fetch('/api/settings/last-project', {
@@ -1806,17 +1874,30 @@ export default function App() {
   };
 
   const handleDeleteProject = (projName) => {
+    setDeleteCloudLink(null);
     setProjectToDelete(projName);
+    // Whether the dialog can offer to delete the cloud copy too. Local state
+    // only, so the dialog does not wait on the network.
+    const projectPath = projects.find(p => p.name === projName)?.project_path
+      || (activeProject?.name === projName ? activeProject.project_path : '');
+    if (!projectPath) return;
+    fetch(`/api/cloud/link?${new URLSearchParams({ projectPath })}`)
+      .then(res => res.json())
+      .then(link => setDeleteCloudLink(link && !link.error ? link : null))
+      .catch(() => setDeleteCloudLink(null));
   };
 
-  const confirmDeleteProject = async (deleteDir) => {
+  const confirmDeleteProject = async (deleteDir, deleteCloud = false) => {
     if (!projectToDelete) return;
     const projName = projectToDelete;
     setProjectToDelete(null);
+    setDeleteCloudLink(null);
     try {
-      const res = await fetch('/api/projects/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: projName, delete_dir: deleteDir }) });
+      const res = await fetch('/api/projects/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: projName, delete_dir: deleteDir, delete_cloud: deleteCloud }) });
       if (res.ok) {
+        const data = await res.json().catch(() => ({}));
         addLog('info', t('app.projectRemoved', { name: projName }));
+        if (data?.cloud?.deleted) addLog('info', t('app.projectCloudCopyRemoved', { defaultValue: 'Cloud copy of {{name}} deleted.', name: projName }));
         if (activeProject?.name === projName) setActiveProject(null);
         fetchProjects();
       } else {
@@ -1913,6 +1994,32 @@ export default function App() {
     }
   };
 
+  // Cloud download: opening the panel resolves a sensible default parent folder
+  // so the common case is "press Download", not "go find the home directory".
+  const openCloudDownload = async () => {
+    setIsCloudDownloadOpen(true);
+    if (cloudDownloadParent) return;
+    try {
+      const res = await fetch('/api/fs/dirs', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: '~' })
+      });
+      const data = await res.json();
+      if (data.current) setCloudDownloadParent(data.current);
+    } catch (e) { /* the user can still pick a folder by hand */ }
+  };
+
+  const handleProjectDownloaded = (project) => {
+    setIsCloudDownloadOpen(false);
+    const downloaded = (project?.report?.downloaded || []).length;
+    addLog('info', t('app.projectDownloaded', {
+      name: project.project_name || project.name,
+      count: downloaded,
+      defaultValue: '{{name}} downloaded from the cloud ({{count}} file(s)).',
+    }));
+    fetchProjects(project.name);
+  };
+
   const confirmDirPicker = async () => {
     if (!dirPicker) return;
     if (dirPicker.target === 'new') setNewProjPath(dirPicker.current);
@@ -1921,6 +2028,9 @@ export default function App() {
     }
     else if (dirPicker.target === 'edit-git-root') {
       setEditingProject(p => ({ ...p, git_root_path: dirPicker.current }));
+    }
+    else if (dirPicker.target === 'cloud-download') {
+      setCloudDownloadParent(dirPicker.current);
     }
     else if (dirPicker.target === 'import') {
       // Call import-project API
@@ -2172,6 +2282,8 @@ export default function App() {
           setActiveBottomTab={setActiveBottomTab}
           onOpenProjectSettings={(e) => { if (activeProject) openEditModal(e, activeProject); }}
           hasActiveProject={!!activeProject}
+          onOpenCloudSync={() => setIsCloudSyncOpen(true)}
+          cloudEnabled={!!cloudStatus?.settings?.enabled}
         />
 
         {/* Left Sidebar */}
@@ -2184,6 +2296,7 @@ export default function App() {
                 handleSelectProject={handleSelectProject}
                 onNewProject={() => setShowNewProjectModal(true)}
                 onImportProject={() => { setImportError(''); openDirPicker('import', '~'); }}
+                onDownloadFromCloud={openCloudDownload}
                 importError={importError}
                 onClearImportError={() => setImportError('')}
                 files={files}
@@ -2207,6 +2320,7 @@ export default function App() {
                 renamingNodePath={renamingNodePath}
                 setRenamingNodePath={setRenamingNodePath}
                 executeRenameNode={executeRenameNode}
+                cloudFileStates={cloudFileStates}
                 pendingCreate={pendingCreate}
                 onInlineCreateSubmit={submitInlineCreate}
                 onInlineCreateCancel={cancelInlineCreate}
@@ -2397,6 +2511,8 @@ export default function App() {
       <StatusBar
         activeProject={activeProject}
         textStats={editorTextStats}
+        cloudStatus={cloudStatus}
+        onOpenCloudSync={() => setIsCloudSyncOpen(true)}
       />
 
       {/* ── Overlays / Modals ── */}
@@ -2450,9 +2566,27 @@ export default function App() {
 
       {confirmRequest && <ConfirmModal confirmRequest={confirmRequest} onConfirm={sendConfirmResponse} />}
 
+      {isCloudSyncOpen && (
+        <CloudSyncModal
+          activeProject={activeProject}
+          onClose={() => { setIsCloudSyncOpen(false); refreshCloudStatus(); }}
+          onWorkspaceChanged={refreshWorkspaceFiles}
+        />
+      )}
+
+      {isCloudDownloadOpen && (
+        <CloudDownloadModal
+          parentPath={cloudDownloadParent}
+          onPickParentPath={() => openDirPicker('cloud-download', cloudDownloadParent || '~')}
+          onClose={() => setIsCloudDownloadOpen(false)}
+          onDownloaded={handleProjectDownloaded}
+        />
+      )}
+
       <DeleteProjectModal
         projectToDelete={projectToDelete}
-        onCancel={() => setProjectToDelete(null)}
+        cloudLink={deleteCloudLink}
+        onCancel={() => { setProjectToDelete(null); setDeleteCloudLink(null); }}
         onConfirm={confirmDeleteProject}
       />
 
