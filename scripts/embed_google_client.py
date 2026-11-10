@@ -46,6 +46,29 @@ def read_console_file(path: str) -> tuple[str, str]:
     return str(raw.get("client_id", "") or "").strip(), str(raw.get("client_secret", "") or "").strip()
 
 
+# Every Google OAuth client id ends with this domain; desktop client secrets
+# start with the prefix below. A build that embeds anything else ships a client
+# Google answers with "401 invalid_client — The OAuth client was not found",
+# which the user only discovers when they press Connect.
+CLIENT_ID_SUFFIX = ".apps.googleusercontent.com"
+CLIENT_SECRET_PREFIX = "GOCSPX-"
+
+
+def client_id_problem(client_id: str, client_secret: str) -> str:
+    """Say why ``client_id`` cannot be a Google OAuth client id, or "" when it can."""
+    if client_id.startswith(CLIENT_SECRET_PREFIX):
+        return (
+            f"the client id starts with {CLIENT_SECRET_PREFIX!r}, which is the shape of a "
+            "client secret. GILZACODE_GDRIVE_CLIENT_ID (or --client-id) must hold the "
+            f"client id, the value ending with {CLIENT_ID_SUFFIX!r}."
+        )
+    if not client_id.endswith(CLIENT_ID_SUFFIX):
+        return f"the client id does not end with {CLIENT_ID_SUFFIX!r}."
+    if client_secret and client_secret == client_id:
+        return "the client secret is the same value as the client id."
+    return ""
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--client-id", default="")
@@ -84,6 +107,12 @@ def main(argv: list[str]) -> int:
             "(GILZACODE_GDRIVE_CLIENT_ID).",
             file=sys.stderr,
         )
+        return 1
+
+    problem = client_id_problem(client_id, client_secret)
+    if problem:
+        # The id is never echoed here: when it is wrong it may well be the secret.
+        print(f"Refusing to embed the Google OAuth client: {problem}", file=sys.stderr)
         return 1
 
     os.makedirs(os.path.dirname(TARGET), exist_ok=True)

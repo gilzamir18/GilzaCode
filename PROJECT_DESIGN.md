@@ -372,7 +372,9 @@ journals and the `include_chats` setting are gone.
 user only presses Connect. `scripts/embed_google_client.py` writes it from the
 environment, from arguments, or from the JSON the Google Cloud console
 downloads; `build_exe.ps1` runs it when `GILZACODE_GDRIVE_CLIENT_ID` is set and
-the spec bundles the file when it exists. A build without it still works: the
+the spec bundles the file when it exists. The script refuses an id that does not end with
+`.apps.googleusercontent.com` (or that is the secret, `GOCSPX-…`): a release
+once shipped the secret in both fields and every Connect got `401 invalid_client`. A build without it still works: the
 panel asks for a user-supplied client. The client secret of a desktop client is
 not confidential (Google's own guidance), but it is kept out of the repository
 anyway.
