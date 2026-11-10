@@ -191,7 +191,7 @@ test('set_layout switches to a known layout and refuses an unknown one', async (
   const { run, calls } = fakeWindow();
   assert.deepEqual(await run(command('set_layout', { layout: 'document' })), { ok: true, layout: 'document' });
   const unknown = await run(command('set_layout', { layout: 'zen' }));
-  assert.match(unknown.error, /no 'zen' layout\. Layouts: ide, studio, document\./);
+  assert.match(unknown.error, /no 'zen' layout\. Layouts: ide, chat, studio, document\./);
   assert.deepEqual(calls, [['layout', 'document']]);
 });
 

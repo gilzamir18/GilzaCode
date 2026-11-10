@@ -1,9 +1,9 @@
 // Which layout modes keep the editor and its preview on screen.
 //
-// All three GilzaCode layouts do: `ide`, `studio` and `document`. (GilzaBots
-// also had chat-first layouts and a checkpoint review layout; the conversation
-// is Claude Code's now, in the panel the chat used to occupy.) Two rules read
-// off this list, which is why it lives here rather than at each call site:
+// Three GilzaCode layouts do: `ide`, `studio` and `document`. The fourth,
+// `chat`, gives the centre to Claude Code (GilzaBots' chat layout, with Claude
+// Code as the conversation). Two rules read off this list, which is why it
+// lives here rather than at each call site:
 //
 //   - those layouts dock the explorer/source-control sidebar, so opening the
 //     explorer from one of them must not switch the user to another layout
@@ -27,16 +27,24 @@ export const layoutShowsEditor = (mode) => EDITOR_LAYOUT_SET.has(mode);
  */
 export const layoutAfterOpeningFile = (mode) => (layoutShowsEditor(mode) ? mode : 'ide');
 
-// The document layout is only the file and its preview: the Claude Code panel
-// button and its Ctrl+T shortcut have nothing to switch there.
-const CHAT_TOGGLE_DISABLED_LAYOUTS = new Set(['document']);
+// The Claude Code panel button and its Ctrl+T shortcut have nothing to switch
+// in the document layout (only the file and its preview) or in the chat layout
+// (where Claude Code is the layout and cannot be hidden).
+const CHAT_TOGGLE_DISABLED_LAYOUTS = new Set(['chat', 'document']);
 
 /** Can the Claude Code panel (where GilzaBots had its chat) be shown/hidden in `mode`? */
 export const layoutAllowsChatToggle = (mode) => !CHAT_TOGGLE_DISABLED_LAYOUTS.has(mode);
 
 
+// Layouts that dock the explorer/source-control sidebar on their left: the
+// editor layouts and the chat layout, whose sidebar is the project explorer.
+const SIDEBAR_LAYOUT_SET = new Set([...EDITOR_LAYOUTS, 'chat']);
+
+/** Does `mode` dock the explorer/source-control sidebar? */
+export const layoutDocksSidebar = (mode) => SIDEBAR_LAYOUT_SET.has(mode);
+
 // Every layout the window has.
-export const LAYOUT_MODES = ['ide', 'studio', 'document'];
+export const LAYOUT_MODES = ['ide', 'chat', 'studio', 'document'];
 
 /**
  * What entering `mode` sets besides the mode itself; a field left out is left

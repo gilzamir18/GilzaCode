@@ -167,7 +167,7 @@ reports a dangling name when the line runs; the cut was driven by it.
   ask, interactive command), slash commands, models, providers and
   connections, hardware, monitors, MCP connectors, asset store, cloud sync,
   onboarding, tutorial, dictation, the Agent Thinking tab, agent change
-  badges, and the `chat`, `chat-bottom` and `review` layouts. Settings lost the
+  badges, and the `chat-bottom` and `review` layouts. Settings lost the
   agent sections (reasoning size, prompt evolution, image generation, Docker
   sandbox, data folder, ephemeral parameters) and the window-graphics,
   feedback and uninstall sections, which referred to GilzaBots.
@@ -175,6 +175,13 @@ reports a dangling name when the line runs; the cut was driven by it.
   requirement is Claude Code. Settings > About keeps GilzaBots' donation card
   (the same PayPal link and QR code), with GilzaCode's wording. No license is
   stated yet, so nothing claims the project is open source.
+- **Layouts**: `ide`, `chat`, `studio`, `document`. The chat layout is
+  GilzaBots' chat layout with Claude Code as the conversation: the panel
+  across the centre, the explorer docked left (`layoutDocksSidebar`), no
+  editor or bottom panel. Opening a file goes to `ide`; the panel's close
+  button leaves the layout. Switching between `ide` and `chat` keeps the same
+  panel element, so the Claude Code session and its screen survive. GilzaBots'
+  chat list has no counterpart: Claude Code's own `/resume` lists sessions.
 - **The chat's place is the Claude Code panel** (`components/ClaudePanel.jsx`):
   same column, same Ctrl+T, same studio cell. Document actions hand it text
   through one state (`claudePromptRequest`): *Ask about* (PDF, Markdown),

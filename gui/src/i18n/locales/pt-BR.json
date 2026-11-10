@@ -5,12 +5,11 @@
     "close": "Fechar mensagem"
   },
   "activityBar": {
-    "chatBottomMode": "Alternar para chat com painel inferior",
     "documentMode": "Layout Documento: o arquivo aberto e sua pré-visualização",
     "studioMode": "Layout Studio: editor, pré-visualização, Claude Code e terminal",
     "explorer": "Explorer",
-    "chatMode": "Modo Chat",
-    "editMode": "Modo Edição",
+    "chatMode": "Layout Chat: o Claude Code ocupando a janela",
+    "editMode": "Voltar ao layout do editor",
     "reviewMode": "Modo Review",
     "sourceControl": "Source Control",
     "gilzabotsCodes": "GilzaBots Chat (Ctrl+T)",

@@ -7,6 +7,7 @@ import {
   enterLayout,
   layoutAfterOpeningFile,
   layoutAllowsChatToggle,
+  layoutDocksSidebar,
   layoutShowsEditor,
 } from '../layoutModes.js';
 
@@ -15,7 +16,7 @@ test('the layouts that show the editor are the ones that dock a sidebar', () => 
   for (const mode of EDITOR_LAYOUTS) assert.equal(layoutShowsEditor(mode), true);
 });
 
-test('the layouts GilzaBots had and GilzaCode does not are not editor layouts', () => {
+test('the chat layout and the ones GilzaBots had are not editor layouts', () => {
   for (const mode of ['chat', 'chat-bottom', 'review']) {
     assert.equal(layoutShowsEditor(mode), false);
   }
@@ -46,8 +47,19 @@ test('the Claude Code panel can be toggled in the layouts that dock it as a pane
   }
 });
 
-test('the Claude Code panel cannot be toggled where it is not rendered', () => {
+test('the Claude Code panel cannot be toggled where it is the layout or is not rendered', () => {
   assert.equal(layoutAllowsChatToggle('document'), false);
+  assert.equal(layoutAllowsChatToggle('chat'), false);
+});
+
+test('the chat layout docks the explorer, as the editor layouts do', () => {
+  for (const mode of ['ide', 'studio', 'document', 'chat']) assert.equal(layoutDocksSidebar(mode), true);
+  assert.equal(layoutDocksSidebar('review'), false);
+  assert.equal(layoutDocksSidebar(undefined), false);
+});
+
+test('opening a file from the chat layout goes to the editor', () => {
+  assert.equal(layoutAfterOpeningFile('chat'), 'ide');
 });
 
 // A recorder for the setters a layout entry calls.
@@ -68,7 +80,7 @@ function setters(hasOpenDocument) {
 }
 
 test('every layout the window renders can be entered', () => {
-  assert.deepEqual([...LAYOUT_MODES].sort(), ['document', 'ide', 'studio']);
+  assert.deepEqual([...LAYOUT_MODES].sort(), ['chat', 'document', 'ide', 'studio']);
   for (const mode of EDITOR_LAYOUTS) assert.ok(LAYOUT_MODES.includes(mode));
 });
 
@@ -91,7 +103,7 @@ test('the document layout opens on the explorer only when no document is open', 
 });
 
 test('the IDE layout changes only the layout', () => {
-  for (const mode of ['ide']) {
+  for (const mode of ['ide', 'chat']) {
     const plain = setters(true);
     enterLayout(mode, plain.deps);
     assert.deepEqual(plain.calls, { layout: mode });

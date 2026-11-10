@@ -7,7 +7,7 @@ import i18n from './i18n/index.js';
 // Utils
 import { getPreference, setPreference } from './utils/preferences';
 import { UI_SCALE_DEFAULT, UI_SCALE_KEY_STEP, clampUiScale, roundUiScale, viewportPointToApp, viewportPxToApp } from './utils/uiScale';
-import { enterLayout, layoutAfterOpeningFile, layoutAllowsChatToggle, layoutShowsEditor } from './utils/layoutModes';
+import { enterLayout, layoutAfterOpeningFile, layoutAllowsChatToggle, layoutDocksSidebar, layoutShowsEditor } from './utils/layoutModes';
 import { createIdeCommandRunner } from './utils/ideCommands.js';
 import { DEFAULT_THOUGHT_CONTEXT_TOKENS } from './utils/thoughtTail';
 import {
@@ -218,6 +218,9 @@ export default function App() {
   // Layouts that show the editor and its preview, and therefore share the IDE
   // layout's docked sidebar and resize handle. See utils/layoutModes.js.
   const isEditorLayout = layoutShowsEditor(layoutMode);
+  // The chat layout: Claude Code across the centre, the explorer docked left.
+  const isChatLayout = layoutMode === 'chat';
+  const docksSidebar = layoutDocksSidebar(layoutMode);
   // The right-hand panel that used to hold GilzaBots' chat now holds Claude Code.
   const [isChatVisible, setIsChatVisible] = useState(false);
   // Text handed to the Claude Code panel to paste into its prompt ({ seq, text }).
@@ -2172,7 +2175,7 @@ export default function App() {
         />
 
         {/* Left Sidebar */}
-        {!isEditorMaximized && activeSidebarTab && isEditorLayout && (
+        {!isEditorMaximized && activeSidebarTab && docksSidebar && (
           <aside className="vscode-sidebar" style={{ width: `${sidebarWidth}px` }}>
             {activeSidebarTab === 'explorer' ? (
               <ExplorerSidebar
@@ -2230,7 +2233,7 @@ export default function App() {
         )}
 
         {/* Left resize handle */}
-        {!isEditorMaximized && activeSidebarTab && isEditorLayout && (
+        {!isEditorMaximized && activeSidebarTab && docksSidebar && (
           <div className="vscode-resizer-horizontal" onMouseDown={(e) => startResizing(e, 'left')} />
         )}
 
@@ -2238,8 +2241,8 @@ export default function App() {
         <main
           className={`vscode-editor-panel ${isStudioLayout ? 'vscode-studio-layout' : ''}`}
           style={{
-            flex: 1,
-            display: isStudioLayout ? 'grid' : 'flex',
+            flex: isChatLayout ? 0 : 1,
+            display: isChatLayout ? 'none' : isStudioLayout ? 'grid' : 'flex',
             // Inline, because the flex/grid switch above is inline too and a
             // class-level template would lose to it.
             ...(isStudioLayout ? { gridTemplateColumns: studioGrid.gridTemplateColumns, gridTemplateRows: studioGrid.gridTemplateRows } : {}),
@@ -2375,15 +2378,17 @@ export default function App() {
           <div className="vscode-resizer-horizontal" onMouseDown={(e) => startResizing(e, 'right')} />
         )}
 
-        {/* Claude Code panel (where GilzaBots had its chat) */}
-        {!isEditorMaximized && layoutMode === 'ide' && isChatVisible && (
+        {/* Claude Code panel (where GilzaBots had its chat): docked right in the
+            IDE layout, across the centre in the chat layout. */}
+        {((!isEditorMaximized && layoutMode === 'ide' && isChatVisible) || isChatLayout) && (
           <ClaudePanel
             width={chatWidth}
+            fillContainer={isChatLayout}
             activeProject={activeProject}
             theme={theme}
             uiScale={uiScale}
             promptRequest={claudePromptRequest}
-            onClose={() => setIsChatVisible(false)}
+            onClose={() => (isChatLayout ? setLayoutMode('ide') : setIsChatVisible(false))}
           />
         )}
       </div>

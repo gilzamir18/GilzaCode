@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Bot, Files, GitBranch, Settings, LayoutGrid, Terminal, Columns2 } from 'lucide-react';
+import { Bot, Files, GitBranch, Settings, LayoutGrid, LayoutTemplate, Terminal, Columns2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   ACTIVITY_BAR_DEFAULT_DENSITY,
@@ -7,7 +7,7 @@ import {
   pickActivityBarDensity,
 } from '../utils/activityBarDensity';
 import { readUiScale } from '../utils/uiScale';
-import { enterLayout, layoutAllowsChatToggle, layoutShowsEditor } from '../utils/layoutModes';
+import { enterLayout, layoutAllowsChatToggle, layoutDocksSidebar } from '../utils/layoutModes';
 
 // Left-side vertical activity bar (VSCode-style icon strip).
 export default function ActivityBar({
@@ -29,7 +29,7 @@ export default function ActivityBar({
   const { t } = useTranslation();
   // Layouts that dock the explorer/source-control sidebar to their left, and so
   // can open one without being switched away from.
-  const hasDockedSidebar = layoutShowsEditor(layoutMode);
+  const hasDockedSidebar = layoutDocksSidebar(layoutMode);
   // The Claude Code panel toggle has nothing to switch in the layouts that do
   // not render it as a panel, so it is disabled rather than silently inert.
   const isChatToggleDisabled = !layoutAllowsChatToggle(layoutMode);
@@ -127,6 +127,14 @@ export default function ActivityBar({
     >
       <div className="vscode-activitybar-top">
         <button
+          onClick={() => setLayoutMode(layoutMode === 'chat' ? 'ide' : 'chat')}
+          className={`vscode-activitybar-btn ${layoutMode === 'chat' ? 'active' : ''}`}
+          title={layoutMode === 'chat' ? t('activityBar.editMode') : t('activityBar.chatMode')}
+        >
+          <LayoutTemplate size={density.iconSize} />
+        </button>
+
+        <button
           onClick={() => {
             if (layoutMode === 'studio') {
               setLayoutMode('ide');
@@ -199,7 +207,7 @@ export default function ActivityBar({
 
         <button
           onClick={() => { if (!isChatToggleDisabled) setIsChatVisible(!isChatVisible); }}
-          className={`vscode-activitybar-btn ${isChatVisible ? 'active' : ''}`}
+          className={`vscode-activitybar-btn ${isChatVisible || layoutMode === 'chat' ? 'active' : ''}`}
           title={t('activityBar.claudeCode', 'Claude Code (Ctrl+T)')}
           disabled={isChatToggleDisabled}
           style={{ opacity: isChatToggleDisabled ? 0.5 : 1, cursor: isChatToggleDisabled ? 'not-allowed' : 'pointer' }}

@@ -65,9 +65,10 @@ TOOLS = [
                     "search), opening the file and the PDF pane.",
      "inputSchema": {"type": "object", "properties": {"path": _STR, "line": _POS_INT}, "required": ["path", "line"]}},
     {"name": "set_layout",
-     "description": "Switch the window layout: 'ide' (editor, sidebar, panels), 'studio' (editor and preview "
-                    "above, Claude Code and terminal below), 'document' (the file and its preview only).",
-     "inputSchema": {"type": "object", "properties": {"layout": {"type": "string", "enum": ["ide", "studio", "document"]}},
+     "description": "Switch the window layout: 'ide' (editor, sidebar, panels), 'chat' (Claude Code across the "
+                    "window, explorer on the left), 'studio' (editor and preview above, Claude Code and terminal "
+                    "below), 'document' (the file and its preview only).",
+     "inputSchema": {"type": "object", "properties": {"layout": {"type": "string", "enum": ["ide", "chat", "studio", "document"]}},
                      "required": ["layout"]}},
     {"name": "get_problems",
      "description": "The entries of the window's Problems panel (LaTeX compile errors).",
