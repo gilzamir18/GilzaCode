@@ -1,0 +1,117 @@
+# Builds the Windows package and attaches it to a GitHub release.
+#
+# Publishing a version:
+#   1. set the same version in pyproject.toml and gilzacode/__init__.py;
+#   2. git tag v<version> && git push origin v<version>
+# The release is created if it does not exist yet, and the zip is attached as
+# GilzaCode-windows-x64.zip, the asset install.ps1 downloads.
+#
+# "Run workflow" (workflow_dispatch) rebuilds an existing tag, for instance to
+# attach the zip to a release that was created by hand.
+#
+# Repository secrets (Settings > Secrets and variables > Actions):
+#   GILZACODE_GDRIVE_CLIENT_ID, GILZACODE_GDRIVE_CLIENT_SECRET
+# the "Desktop app" OAuth client embedded for Cloud sync. A release without it
+# would make every user register their own Google client, so the build stops
+# instead.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build and attach to its release (for example v0.1.2)"
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: gui/package-lock.json
+
+      - name: Check that the tag matches the package version
+        run: |
+          $pyproject = (Select-String -Path pyproject.toml -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
+          $module = (Select-String -Path gilzacode/__init__.py -Pattern '^__version__ = "(.+)"').Matches[0].Groups[1].Value
+          $tagVersion = $env:TAG -replace '^v', ''
+          if ($pyproject -ne $tagVersion -or $module -ne $tagVersion) {
+            throw "Tag $env:TAG does not match pyproject.toml ($pyproject) and gilzacode/__init__.py ($module)."
+          }
+          Write-Host "Version $tagVersion"
+
+      - name: Check the Google OAuth client secrets
+        env:
+          GILZACODE_GDRIVE_CLIENT_ID: ${{ secrets.GILZACODE_GDRIVE_CLIENT_ID }}
+          GILZACODE_GDRIVE_CLIENT_SECRET: ${{ secrets.GILZACODE_GDRIVE_CLIENT_SECRET }}
+        run: |
+          if (-not $env:GILZACODE_GDRIVE_CLIENT_ID -or -not $env:GILZACODE_GDRIVE_CLIENT_SECRET) {
+            throw "Set the repository secrets GILZACODE_GDRIVE_CLIENT_ID and GILZACODE_GDRIVE_CLIENT_SECRET (Settings > Secrets and variables > Actions)."
+          }
+
+      - name: Install
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          Push-Location gui; npm ci --no-audit --no-fund; Pop-Location
+
+      - name: Test the backend
+        run: python -m pytest -q
+
+      - name: Test the interface
+        working-directory: gui
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          npm run test:wysiwyg
+          npx eslint src
+
+      - name: Build the package
+        env:
+          GILZACODE_GDRIVE_CLIENT_ID: ${{ secrets.GILZACODE_GDRIVE_CLIENT_ID }}
+          GILZACODE_GDRIVE_CLIENT_SECRET: ${{ secrets.GILZACODE_GDRIVE_CLIENT_SECRET }}
+        run: ./build_exe.ps1
+
+      - name: Check the package
+        run: |
+          $client = Get-ChildItem -Path dist/GilzaCode -Recurse -Filter bundled_google_client.json | Select-Object -First 1
+          if (-not $client) { throw "The Google OAuth client is not in the package." }
+          if (-not (Test-Path dist/GilzaCode-windows-x64.zip)) { throw "dist/GilzaCode-windows-x64.zip was not built." }
+
+      - name: Attach the package to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view $env:TAG *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:TAG dist/GilzaCode-windows-x64.zip --clobber
+          } else {
+            gh release create $env:TAG dist/GilzaCode-windows-x64.zip --title "GilzaCode $env:TAG" --generate-notes --verify-tag
+          }
+          if ($LASTEXITCODE -ne 0) { throw "Publishing the release failed." }

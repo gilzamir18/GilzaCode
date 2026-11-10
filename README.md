@@ -276,6 +276,10 @@ To ship Google Drive sync ready to use, set `GILZACODE_GDRIVE_CLIENT_ID` and
 embed the client once with `python scripts\embed_google_client.py --from-file client_secret_….json`.
 The embedded file is git-ignored.
 
+Releases are built by GitHub Actions ([release.yml](.github/workflows/release.yml)): set the same
+version in `pyproject.toml` and `gilzacode/__init__.py`, then push a tag `v<version>`. The workflow
+tests, builds and attaches `GilzaCode-windows-x64.zip` to the release.
+
 Set `GILZACODE_DEVTOOLS=1` to open the window with developer tools, and `GILZACODE_HOME` to use a
 data folder other than `~\.gilzacode`.
 

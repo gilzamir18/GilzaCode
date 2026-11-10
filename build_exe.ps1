@@ -78,7 +78,7 @@ Write-Host "`n[3.5/5] Google OAuth client for Cloud sync"
 if ($env:GILZACODE_GDRIVE_CLIENT_ID) {
     Invoke-Checked { python scripts\embed_google_client.py --from-env } "embed_google_client.py"
 }
-if (Test-Path "gilzacode\cloud\providersundled_google_client.json") {
+if (Test-Path "gilzacode\cloud\providers\bundled_google_client.json") {
     Write-Host "The Google OAuth client is embedded."
 } else {
     Write-Warning "No Google OAuth client: Cloud sync in this build needs a user-supplied client."

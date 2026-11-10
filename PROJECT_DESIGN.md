@@ -417,6 +417,14 @@ GilzaBots' frozen-build setup:
 **The build checks itself:** it fails if the bundled bridge does not answer
 `initialize` over stdio.
 
+**Releases** come from `.github/workflows/release.yml`: pushing a `v*` tag
+builds on a GitHub Windows runner and attaches `GilzaCode-windows-x64.zip`
+to the tag's release, creating it when needed (*Run workflow* rebuilds an
+existing tag). It stops when the tag differs from the version in
+`pyproject.toml` and `gilzacode/__init__.py`, when the Google client secrets
+(`GILZACODE_GDRIVE_CLIENT_ID` / `_SECRET`) are missing, when a test fails, or
+when the package lacks the embedded client.
+
 **`install.ps1` installs per user** into `%LOCALAPPDATA%\GilzaCode`, with no
 administrator rights.
 - **Package source:** `-Source <zip or URL>`, else `GILZACODE_DOWNLOAD_URL`,
@@ -448,8 +456,7 @@ administrator rights.
 4. **MCP tools** — done (§8, *MCP tools*).
 5. **Packaging** — done (§10).
 6. **Cloud sync** — done (§9).
-7. **Next**: a GitHub repository with tagged releases (for `install.ps1`'s
-   default source), porting GilzaBots' browser suite, the optional channel, a
+7. **Next**: porting GilzaBots' browser suite, the optional channel, a
    terminal emulator for reading the Claude panel, and the leftovers in §7.
 
 ## 12. Tests
