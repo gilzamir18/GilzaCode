@@ -125,7 +125,8 @@ def default_static_dir() -> Path | None:
 
 
 def create_app(session: LocalSession, static_dir: Path | None = None) -> web.Application:
-    from gilzacode.server import routes_files, routes_projects, routes_settings, routes_system
+    from gilzacode.server import (routes_files, routes_git, routes_latex, routes_pdf, routes_projects,
+                                  routes_claude, routes_settings, routes_snippets, routes_speech, routes_system, routes_terminal)
 
     app = web.Application(
         middlewares=[headers_middleware, session_middleware, ordering_middleware],
@@ -135,8 +136,11 @@ def create_app(session: LocalSession, static_dir: Path | None = None) -> web.App
     app[ORDER_LOCK_KEY] = asyncio.Lock()
     app[STATIC_DIR_KEY] = static_dir
     app.router.add_get("/api/session", session_check)
-    for module in (routes_files, routes_projects, routes_settings, routes_system):
+    for module in (routes_claude, routes_files, routes_git, routes_latex, routes_pdf, routes_projects, routes_settings,
+                   routes_snippets, routes_speech, routes_system, routes_terminal):
         app.router.add_routes(module.routes)
+        if hasattr(module, "setup"):
+            module.setup(app)
     # Anything else under /api/ is an unknown endpoint, not the SPA fallback.
     app.router.add_route("*", "/api/{tail:.*}", unknown_endpoint)
     app.router.add_get("/{tail:.*}", _static_handler(static_dir))

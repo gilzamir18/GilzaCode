@@ -1,0 +1,172 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Bot, ClipboardPaste, RotateCcw, Trash2, X } from 'lucide-react';
+import TerminalInstance from './TerminalInstance';
+import { TERMINAL_FONT_SIZE_DEFAULT } from '../hooks/useTerminal';
+
+// How long Claude Code must have been running before a staged prompt is pasted
+// on its own. A session the panel has just started may still be showing a
+// startup dialog (folder trust, a login), and text must never be typed into one.
+const AUTO_PASTE_MIN_UPTIME_MS = 5000;
+
+const postJson = (url, body) => fetch(url, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+});
+
+// The panel where GilzaBots had its chat: Claude Code itself, running in a PTY in
+// the project folder (terminal id `claude`, PROJECT_DESIGN.md §2).
+//
+// Document actions ("Ask about", "Fix with AI", the editor's inline prompts) hand
+// it `promptRequest`. The text is pasted into Claude Code's composer, never
+// submitted: the user reviews it and presses Enter. It is pasted on its own only
+// into a session that has been running for a while and is quiet; otherwise it
+// waits here, visible, with a button to paste it.
+export default function ClaudePanel({ width, fillContainer, activeProject, promptRequest, onClose, theme, uiScale }) {
+  const { t } = useTranslation();
+  const projectPath = activeProject?.project_path || '';
+  const [staged, setStaged] = useState('');
+  const [notice, setNotice] = useState('');
+  const [ended, setEnded] = useState(false);
+  const [problem, setProblem] = useState('');
+  const [connectionKey, setConnectionKey] = useState(0);
+  const termRef = useRef(null);
+
+  const readStatus = useCallback(async () => {
+    if (!projectPath) return null;
+    try {
+      const res = await fetch(`/api/claude/status?${new URLSearchParams({ projectPath })}`);
+      return res.ok ? await res.json() : null;
+    } catch { return null; }
+  }, [projectPath]);
+
+  // A missing `claude` is said up front instead of as a dead terminal.
+  useEffect(() => {
+    setEnded(false);
+    setProblem('');
+    readStatus().then(status => { if (status && !status.available) setProblem(status.problem); });
+  }, [readStatus]);
+
+  const paste = useCallback(async (text) => {
+    try {
+      const res = await postJson('/api/claude/paste', { projectPath, text });
+      if (res.ok) {
+        setStaged('');
+        setNotice(t('claudePanel.pasted', 'Pasted into Claude Code. Review it and press Enter to send.'));
+        termRef.current?.focus();
+        return true;
+      }
+      const data = await res.json().catch(() => ({}));
+      setNotice(data.error || t('claudePanel.pasteFailed', 'Could not paste into Claude Code.'));
+    } catch (err) {
+      setNotice(String(err));
+    }
+    return false;
+  }, [projectPath, t]);
+
+  useEffect(() => {
+    if (!promptRequest?.text) return;
+    let cancelled = false;
+    setStaged(promptRequest.text);
+    setNotice('');
+    (async () => {
+      const status = await readStatus();
+      if (cancelled || !status?.running || status.uptime_ms < AUTO_PASTE_MIN_UPTIME_MS) return;
+      await paste(promptRequest.text);
+    })();
+    return () => { cancelled = true; };
+  }, [promptRequest?.seq]);
+
+  const restart = async () => {
+    setNotice('');
+    const res = await postJson('/api/claude/start', { projectPath });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setProblem(data.error || t('claudePanel.startFailed', 'Claude Code could not be started.'));
+      return;
+    }
+    setProblem('');
+    setEnded(false);
+    setConnectionKey(k => k + 1);
+  };
+
+  const onStreamClosed = useCallback(async () => {
+    const status = await readStatus();
+    if (status && !status.available) setProblem(status.problem);
+    else setEnded(true);
+  }, [readStatus]);
+
+  return (
+    <aside
+      className="vscode-chat"
+      style={{
+        ...(fillContainer ? { flex: 1, minWidth: 0, borderLeft: 'none', width: '100%' } : { width: `${width}px` }),
+        display: 'flex', flexDirection: 'column',
+      }}
+    >
+      <div className="vscode-sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px' }}>
+        <Bot size={16} aria-hidden="true" />
+        <span className="vscode-sidebar-title" style={{ flex: 1 }}>{t('claudePanel.title', 'Claude Code')}</span>
+        {projectPath && !problem && (
+          <button type="button" className="git-icon-button" onClick={restart}
+            title={t('claudePanel.restart', 'Start a new Claude Code session')}>
+            <RotateCcw size={14} />
+          </button>
+        )}
+        {onClose && (
+          <button type="button" className="git-icon-button" onClick={onClose} title={t('claudePanel.close', 'Hide the Claude Code panel')}>
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
+      {staged && (
+        <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--vscode-border)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={{ fontSize: 11, opacity: 0.75 }}>{t('claudePanel.stagedPrompt', 'Prompt waiting for Claude Code:')}</span>
+          <pre style={{ margin: 0, maxHeight: 120, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12, userSelect: 'text' }}>{staged}</pre>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" className="vscode-button" disabled={!!problem || ended}
+              onClick={() => paste(staged)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <ClipboardPaste size={12} /> {t('claudePanel.paste', 'Paste into Claude Code')}
+            </button>
+            <button type="button" className="vscode-button-secondary" onClick={() => setStaged('')}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Trash2 size={12} /> {t('claudePanel.discard', 'Discard')}
+            </button>
+          </div>
+        </div>
+      )}
+      {notice && (
+        <div role="status" style={{ padding: '6px 12px', fontSize: 11, opacity: 0.85, borderBottom: '1px solid var(--vscode-border)' }}>{notice}</div>
+      )}
+
+      <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+        {!projectPath ? (
+          <p style={{ margin: 12, opacity: 0.8 }}>{t('claudePanel.noProject', 'Open a project to start Claude Code in it.')}</p>
+        ) : problem ? (
+          <p role="alert" style={{ margin: 12, color: 'var(--vscode-errorForeground)', whiteSpace: 'pre-wrap' }}>{problem}</p>
+        ) : ended ? (
+          <div style={{ margin: 12, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
+            <span>{t('claudePanel.ended', 'Claude Code has ended.')}</span>
+            <button type="button" className="vscode-button" onClick={restart}>{t('claudePanel.startAgain', 'Start Claude Code again')}</button>
+          </div>
+        ) : (
+          <TerminalInstance
+            termId="claude"
+            activeProject={activeProject}
+            activeBottomTab="terminal"
+            bottomPanelHeight={0}
+            isTerminalCollapsed={false}
+            theme={theme}
+            isActive
+            fontSize={TERMINAL_FONT_SIZE_DEFAULT}
+            uiScale={uiScale}
+            onMount={(term) => { termRef.current = term; }}
+            redrawPromptOnShow={false}
+            onStreamClosed={onStreamClosed}
+            connectionKey={connectionKey}
+          />
+        )}
+      </div>
+    </aside>
+  );
+}

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<!--
+  Startup splash screen — the single source of it.
+
+  Shown twice, so the wait looks like one screen from launch to the editor:
+  - by the desktop shell (gilzabots/ide_server.py: start_gui_server), which opens
+    the window with this page *before* the slow imports and the local server, and
+    reports progress through window.gilzabotsSplash;
+  - inside index.html (vite.config.js: inlineSplash), copied between the
+    splash:begin/end markers, until React replaces #root.
+
+  Filled in by both: the icon's src placeholder becomes the data URI of
+  splash-icon.png (the page may be shown before any server can serve it).
+  data-splash-lang on <html> names the UI language when the shell knows it;
+  empty means "ask localStorage / the system".
+-->
+<html lang="en" data-splash-lang="">
+<head>
+<meta charset="UTF-8">
+<title>GilzaBots</title>
+<style id="gilzabots-splash-style">
+  html, body { margin: 0; height: 100%; background: #0f1117; }
+  #gilzabots-splash {
+    position: fixed; inset: 0; z-index: 2147483647;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+    background: radial-gradient(circle at 50% 42%, #221d4a 0%, #0f1117 68%);
+    color: #dcdfe8; cursor: default; user-select: none;
+    font-family: system-ui, -apple-system, "Segoe UI", Ubuntu, Cantarell, "Noto Sans", sans-serif;
+  }
+  #gilzabots-splash .splash-icon {
+    width: 96px; height: 96px; margin-bottom: 4px;
+    filter: drop-shadow(0 10px 28px rgba(124, 108, 242, 0.32));
+    animation: gilzabots-splash-breathe 2.4s ease-in-out infinite;
+  }
+  #gilzabots-splash .splash-name { font-size: 26px; font-weight: 600; letter-spacing: 0.02em; color: #f5f6fa; }
+  #gilzabots-splash .splash-bar {
+    position: relative; overflow: hidden;
+    width: 180px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.08);
+  }
+  #gilzabots-splash .splash-bar::after {
+    content: ""; position: absolute; top: 0; left: -40%; width: 40%; height: 100%;
+    background: linear-gradient(90deg, transparent, #8b7cf6, transparent);
+    animation: gilzabots-splash-slide 1.3s ease-in-out infinite;
+  }
+  #gilzabots-splash .splash-status { min-height: 1.4em; font-size: 12.5px; color: #8b90a0; }
+  #gilzabots-splash.splash-failed .splash-bar { display: none; }
+  #gilzabots-splash.splash-failed .splash-icon { animation: none; opacity: 0.6; }
+  #gilzabots-splash.splash-failed .splash-status {
+    max-width: min(70ch, 90vw); color: #f87171; text-align: center; white-space: pre-wrap; user-select: text;
+  }
+  @keyframes gilzabots-splash-slide { to { left: 100%; } }
+  @keyframes gilzabots-splash-breathe { 50% { transform: scale(1.04); } }
+  @media (prefers-reduced-motion: reduce) {
+    #gilzabots-splash .splash-icon, #gilzabots-splash .splash-bar::after { animation: none; }
+  }
+</style>
+</head>
+<body>
+<!-- splash:begin -->
+<div id="gilzabots-splash" role="status" aria-live="polite" data-status="loading">
+  <img class="splash-icon" src="__SPLASH_ICON__" alt="">
+  <div class="splash-name">GilzaBots</div>
+  <div class="splash-bar"></div>
+  <div class="splash-status" id="gilzabots-splash-status"></div>
+</div>
+<script>
+(function () {
+  var MESSAGES = {
+    en: {
+      loading: 'Loading the AI engine…',
+      starting: 'Starting the local server…',
+      opening: 'Opening the editor…',
+      failed: 'GilzaBots could not start.',
+    },
+    pt: {
+      loading: 'Carregando o motor de IA…',
+      starting: 'Iniciando o servidor local…',
+      opening: 'Abrindo o editor…',
+      failed: 'O GilzaBots não conseguiu iniciar.',
+    },
+  };
+  function language() {
+    var chosen = document.documentElement.getAttribute('data-splash-lang');
+    if (!chosen) {
+      try { chosen = window.localStorage.getItem('uiLanguage'); } catch (e) { chosen = ''; }
+    }
+    chosen = chosen || navigator.language || 'en';
+    return /^pt/i.test(chosen) ? 'pt' : 'en';
+  }
+  var root = document.getElementById('gilzabots-splash');
+  var status = document.getElementById('gilzabots-splash-status');
+  window.gilzabotsSplash = {
+    status: function (key) {
+      if (!status.isConnected) return;
+      status.textContent = MESSAGES[language()][key] || '';
+    },
+    fail: function (detail) {
+      if (!status.isConnected) return;
+      root.classList.add('splash-failed');
+      status.textContent = MESSAGES[language()].failed + (detail ? '\n\n' + detail : '');
+    },
+  };
+  window.gilzabotsSplash.status(root.getAttribute('data-status'));
+})();
+</script>
+<!-- splash:end -->
+</body>
+</html>

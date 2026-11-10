@@ -69,10 +69,11 @@ async def get_client_prefs(_request: web.Request) -> web.Response:
 
 @routes.post("/api/settings/client-prefs")
 async def set_client_prefs(request: web.Request) -> web.Response:
-    """``{"set": {key: value}, "remove": [key]}``, string keys and values."""
+    """``{"set": {key: value}, "remove": [key], "legacy_import": bool}``, string keys and values."""
     data = await read_json(request)
     try:
-        settings.update_client_prefs(data.get("set", {}), data.get("remove", []))
+        applied = settings.update_client_prefs(data.get("set", {}), data.get("remove", []),
+                                               legacy_import=bool(data.get("legacy_import", False)))
     except ValueError as exc:
         return error(400, str(exc))
-    return web.json_response({"success": True, "applied": True})
+    return web.json_response({"success": True, "applied": applied})

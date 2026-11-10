@@ -1,0 +1,22 @@
+/*
+ * Native MathML output (see docs/kb/katex_equations_longtime.md) relies on the
+ * browser to build stretchy operators (e.g. the brace in \begin{cases}) from
+ * the active font's OpenType MATH table. KaTeX_Main, applied by katex.min.css,
+ * has no MATH table, so Chromium/WebView2 renders stretchy fences at a fixed
+ * single-line height instead of stretching them to match the enclosed content
+ * (a documented Chromium MathML limitation). STIX Two Math ships a MATH table,
+ * so scoping it to <math> elements fixes stretch sizing without touching the
+ * KaTeX HTML/SVG rendering path used elsewhere (e.g. RichTextEditor).
+ * License: SIL OFL 1.1, see docs/third_party/stix-two-math-NOTICE.md.
+ */
+@font-face {
+  font-family: 'STIX Two Math';
+  src: url('/fonts/STIXTwoMath-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+math {
+  font-family: 'STIX Two Math', KaTeX_Main, 'Times New Roman', serif;
+}

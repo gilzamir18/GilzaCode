@@ -1,0 +1,319 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   Styles for the LaTeX WYSIWYG mode.
+
+   The surface is meant to read as a document, not as a form: prose gets a
+   measured column and real typographic rhythm, while anything the model
+   preserves verbatim is visibly set apart so it is obvious at a glance which
+   parts of the page are editable here and which are edited in the source.
+
+   Colours come from the host's VS Code theme variables, with fallbacks, so the
+   mode follows the app's light/dark setting without a palette of its own.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.ltx-wysiwyg {
+  height: 100%;
+  overflow: auto;
+  background: var(--vscode-editor-bg, #1e1e1e);
+  color: var(--vscode-text-fg, #d4d4d4);
+}
+
+.ltx-wysiwyg-page {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 2.5rem 2rem 8rem;
+}
+
+.ltx-wysiwyg .ProseMirror {
+  outline: none;
+  line-height: 1.7;
+  font-size: 15px;
+  font-family: var(--vscode-font-family, system-ui, sans-serif);
+}
+
+.ltx-wysiwyg .ProseMirror:focus { outline: none; }
+
+/* ── Prose ───────────────────────────────────────────────────────────────── */
+
+.ltx-wysiwyg .ltx-paragraph {
+  margin: 0 0 1em;
+  text-align: justify;
+  hyphens: auto;
+}
+
+.ltx-wysiwyg .ltx-heading {
+  margin: 1.6em 0 0.6em;
+  line-height: 1.3;
+  font-weight: 600;
+  color: var(--vscode-text-fg, #e8e8e8);
+}
+
+.ltx-wysiwyg h1.ltx-heading { font-size: 1.9em; }
+.ltx-wysiwyg h2.ltx-heading { font-size: 1.55em; }
+.ltx-wysiwyg h3.ltx-heading { font-size: 1.28em; }
+.ltx-wysiwyg h4.ltx-heading { font-size: 1.12em; }
+.ltx-wysiwyg h5.ltx-heading,
+.ltx-wysiwyg h6.ltx-heading { font-size: 1em; font-style: italic; }
+
+.ltx-wysiwyg .ltx-list { margin: 0 0 1em; padding-left: 1.6em; }
+.ltx-wysiwyg .ltx-item { margin: 0.2em 0; }
+.ltx-wysiwyg .ltx-item > .ltx-paragraph { margin-bottom: 0.2em; }
+
+.ltx-wysiwyg blockquote.ltx-quote {
+  margin: 0 0 1em;
+  padding: 0.2em 0 0.2em 1em;
+  border-left: 3px solid var(--vscode-widget-border, #3a3a3a);
+  color: var(--vscode-descriptionForeground, #a0a0a0);
+  font-style: italic;
+}
+
+.ltx-wysiwyg .ltx-align { margin: 0 0 1em; }
+.ltx-wysiwyg .ltx-center { text-align: center; }
+.ltx-wysiwyg .ltx-flushleft { text-align: left; }
+.ltx-wysiwyg .ltx-flushright { text-align: right; }
+.ltx-wysiwyg .ltx-center .ltx-paragraph,
+.ltx-wysiwyg .ltx-flushright .ltx-paragraph { text-align: inherit; }
+
+.ltx-wysiwyg .ltx-abstract {
+  margin: 0 0 1.5em;
+  padding: 1em 1.2em;
+  border: 1px solid var(--vscode-widget-border, #2a2a2a);
+  border-radius: 4px;
+  background: var(--vscode-list-hoverBg, rgba(255, 255, 255, 0.02));
+  font-size: 0.94em;
+}
+
+.ltx-wysiwyg .ltx-abstract::before {
+  content: 'Abstract';
+  display: block;
+  margin-bottom: 0.5em;
+  font-size: 0.78em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground, #8a8a8a);
+}
+
+/* A footnote marker. Deliberately not a number: LaTeX assigns those at
+   compile time from a document-wide counter, and inventing one here would be
+   a guess the reader could mistake for the real numbering. */
+.ltx-wysiwyg .ltx-footnote {
+  color: var(--vscode-accent, #007acc);
+  cursor: help;
+  font-size: 0.8em;
+  padding: 0 0.1em;
+}
+
+/* ── Wrappers without dedicated styling ──────────────────────────────────── */
+
+/* A generic environment shows its boundary and nothing else: what a package's
+   environment actually renders as is not knowable without running LaTeX, so
+   inventing a look for it would be a guess presented as fact. */
+.ltx-wysiwyg .ltx-env {
+  margin: 0 0 1em;
+  padding: 0.1em 0 0.1em 0.9em;
+  border-left: 2px solid var(--vscode-widget-border, #2a2a2a);
+}
+
+/* ── Beamer columns ──────────────────────────────────────────────────────── */
+
+.ltx-wysiwyg .ltx-columns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem;
+  margin: 0 0 1em;
+}
+
+/* `min-width` is what makes the row wrap into a stack in a narrow editor pane
+   rather than crushing the columns; the flex grow factor set in the node's
+   toDOM carries the declared width fraction. */
+.ltx-wysiwyg .ltx-column { min-width: 12rem; }
+.ltx-wysiwyg .ltx-column > *:last-child { margin-bottom: 0; }
+
+/* ── Beamer containers ───────────────────────────────────────────────────── */
+
+.ltx-wysiwyg .ltx-container {
+  margin: 0 0 1.5em;
+  border: 1px solid var(--vscode-widget-border, #2a2a2a);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.ltx-wysiwyg .ltx-container-title {
+  margin: 0;
+  padding: 0.55em 0.9em;
+  background: var(--vscode-list-hoverBg, rgba(255, 255, 255, 0.04));
+  border-bottom: 1px solid var(--vscode-widget-border, #2a2a2a);
+  font-size: 1.05em;
+  font-weight: 600;
+}
+
+.ltx-wysiwyg .ltx-container-title:empty::before {
+  content: 'Untitled frame';
+  color: var(--vscode-descriptionForeground, #6a6a6a);
+  font-weight: 400;
+  font-style: italic;
+}
+
+.ltx-wysiwyg .ltx-container > *:not(.ltx-container-title) { margin-left: 0.9em; margin-right: 0.9em; }
+.ltx-wysiwyg .ltx-container > *:nth-child(2) { margin-top: 0.9em; }
+
+.ltx-wysiwyg .ltx-frametitle {
+  margin: 0 0 0.6em;
+  font-size: 1.05em;
+  font-weight: 600;
+  color: var(--vscode-accent, #4daafc);
+}
+
+/* ── Preserved-verbatim blocks ───────────────────────────────────────────── */
+
+.ltx-wysiwyg .ltx-raw-host {
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+  margin: 0 0 1em;
+  border-radius: 4px;
+}
+
+.ltx-wysiwyg .ltx-raw-grip {
+  flex: 0 0 6px;
+  border-radius: 3px;
+  background: var(--vscode-widget-border, #2a2a2a);
+  cursor: grab;
+  transition: background 0.15s;
+}
+
+.ltx-wysiwyg .ltx-raw-host:hover .ltx-raw-grip { background: var(--vscode-accent, #007acc); }
+.ltx-wysiwyg .ltx-raw-body { flex: 1 1 auto; min-width: 0; }
+
+.ltx-wysiwyg .ltx-selected {
+  box-shadow: 0 0 0 2px var(--vscode-accent, #007acc);
+}
+
+/* ── Math ────────────────────────────────────────────────────────────────── */
+
+.ltx-wysiwyg .ltx-math-block-host {
+  margin: 1.2em 0;
+  padding: 0.6em 0.8em;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.ltx-wysiwyg .ltx-math-block-host:hover {
+  border-color: var(--vscode-widget-border, #2a2a2a);
+  background: var(--vscode-list-hoverBg, rgba(255, 255, 255, 0.02));
+}
+
+.ltx-wysiwyg .ltx-math-preview { cursor: pointer; }
+.ltx-wysiwyg .ltx-math-input {
+  display: none;
+  width: 100%;
+  min-height: 3em;
+  padding: 0.5em;
+  border: 1px solid var(--vscode-accent, #007acc);
+  border-radius: 4px;
+  background: var(--vscode-editor-bg, #1e1e1e);
+  color: var(--vscode-text-fg, #d4d4d4);
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.ltx-wysiwyg .ltx-math-block-host.ltx-editing .ltx-math-preview { display: none; }
+.ltx-wysiwyg .ltx-math-block-host.ltx-editing .ltx-math-input { display: block; }
+
+.ltx-wysiwyg .ltx-math-inline-host { display: inline-block; }
+.ltx-wysiwyg .ltx-math-inline-preview {
+  padding: 0 1px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.ltx-wysiwyg .ltx-math-inline-preview:hover { background: var(--vscode-list-hoverBg, rgba(77, 170, 252, 0.14)); }
+
+.ltx-wysiwyg .ltx-math-inline-input {
+  display: none;
+  padding: 0 2px;
+  border: 1px solid var(--vscode-accent, #007acc);
+  border-radius: 3px;
+  background: var(--vscode-editor-bg, #1e1e1e);
+  color: var(--vscode-text-fg, #d4d4d4);
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.92em;
+}
+
+.ltx-wysiwyg .ltx-math-inline-host.ltx-editing .ltx-math-inline-preview { display: none; }
+.ltx-wysiwyg .ltx-math-inline-host.ltx-editing .ltx-math-inline-input { display: inline-block; }
+
+.ltx-wysiwyg .ltx-math-empty {
+  color: var(--vscode-descriptionForeground, #6a6a6a);
+  font-style: italic;
+  font-size: 0.9em;
+}
+
+.ltx-wysiwyg .ltx-math-error {
+  color: var(--vscode-errorForeground, #f48771);
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.9em;
+}
+
+/* ── Unmodelled inline commands ──────────────────────────────────────────── */
+
+.ltx-wysiwyg .ltx-inline-raw-chip {
+  padding: 0 3px;
+  border-radius: 3px;
+  background: var(--vscode-list-hoverBg, rgba(255, 255, 255, 0.06));
+  color: var(--vscode-descriptionForeground, #9a9a9a);
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.86em;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.ltx-wysiwyg code { font-family: var(--vscode-editor-font-family, monospace); font-size: 0.9em; }
+.ltx-wysiwyg .ltx-sc { font-variant: small-caps; }
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────── */
+
+.ltx-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 8px;
+  background: var(--vscode-sidebar-bg, #252526);
+  border-bottom: 1px solid var(--vscode-widget-border, #2a2a2a);
+}
+
+.ltx-toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--vscode-text-fg, #ccc);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ltx-toolbar-button:hover { background: var(--vscode-list-hoverBg, rgba(255, 255, 255, 0.08)); }
+.ltx-toolbar-button.is-active {
+  background: var(--vscode-accent, #007acc);
+  color: #fff;
+}
+.ltx-toolbar-button:disabled { opacity: 0.4; cursor: default; }
+.ltx-toolbar-separator {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--vscode-widget-border, #3a3a3a);
+}

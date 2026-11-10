@@ -100,10 +100,22 @@ def relaunch_command() -> list[str]:
     return [sys.executable, "-m", "gilzacode", *sys.argv[1:]]
 
 
+def spawn_detached(command: list[str]) -> subprocess.Popen:
+    """Start `command` detached from this process.
+
+    DETACHED_PROCESS keeps the child alive after this process exits. Never add
+    CREATE_NEW_PROCESS_GROUP: Windows then disables Ctrl+C in the new process (an
+    implicit ``SetConsoleCtrlHandler(NULL, TRUE)``) and every process it starts
+    inherits that, so after a restart Ctrl+C would stop working in the integrated
+    terminal, and in Claude Code running there (found in GilzaBots).
+    """
+    return subprocess.Popen(command, close_fds=True, cwd=os.getcwd(),
+                            creationflags=getattr(subprocess, "DETACHED_PROCESS", 0x00000008))
+
+
 def schedule_restart(delay: float = 0.3) -> None:
     """Start a new GilzaCode detached from this one, then end this process."""
-    flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-    subprocess.Popen(relaunch_command(), close_fds=True, creationflags=flags)
+    spawn_detached(relaunch_command())
 
     def _exit():
         time.sleep(delay)

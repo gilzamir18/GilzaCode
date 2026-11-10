@@ -100,19 +100,46 @@ def _validate_pref_changes(changes: Any, removals: Any) -> tuple[dict[str, str],
     return changes, removals
 
 
+#: Old localStorage keys that the one-time import does not copy into client_prefs.
+_LEGACY_KEYS_NOT_IMPORTED = {"lastActiveProject", "uiLanguage"}
+
+
 def load_client_prefs() -> dict[str, Any]:
-    prefs = load().get("client_prefs")
-    return {"prefs": dict(prefs) if isinstance(prefs, dict) else {}}
+    """The stored preferences and whether the one-time localStorage import ran."""
+    current = load()
+    prefs = current.get("client_prefs")
+    return {"prefs": dict(prefs) if isinstance(prefs, dict) else {},
+            "imported": bool(current.get("client_prefs_imported", False))}
 
 
-def update_client_prefs(changes: Any, removals: Any = None) -> None:
-    """Apply preference changes. Raises ValueError for a malformed request."""
+def update_client_prefs(changes: Any, removals: Any = None, *, legacy_import: bool = False) -> bool:
+    """Apply preference changes; return whether they were applied.
+
+    Raises ValueError for a malformed request. ``legacy_import`` is the one-time
+    copy of a window's old localStorage (GilzaBots §2.1): it is applied only while
+    no import has happened yet and never overwrites a key already stored, so a
+    window on another port cannot bring back an older copy.
+    """
     changes, removals = _validate_pref_changes(changes, [] if removals is None else removals)
     with _lock:
         current = load()
         prefs = current.get("client_prefs")
         prefs = dict(prefs) if isinstance(prefs, dict) else {}
-        prefs.update(changes)
-        for key in removals:
-            prefs.pop(key, None)
-        save({"client_prefs": prefs})
+        update: dict[str, Any] = {}
+        if legacy_import:
+            if current.get("client_prefs_imported"):
+                return False
+            last_project = changes.get("lastActiveProject", "")
+            if last_project.strip() and not current.get("last_active_project"):
+                update["last_active_project"] = last_project
+            for key, value in changes.items():
+                if key not in _LEGACY_KEYS_NOT_IMPORTED:
+                    prefs.setdefault(key, value)
+            update["client_prefs_imported"] = True
+        else:
+            prefs.update(changes)
+            for key in removals:
+                prefs.pop(key, None)
+        update["client_prefs"] = prefs
+        save(update)
+        return True

@@ -20,8 +20,9 @@ async def test_create_import_list_rename_delete(client, tmp_path, project):
     assert listing["last_active_project"] == ""
 
     await client.post("/api/settings/last-project", json={"project_name": "proj"})
-    renamed = await (await client.post("/api/projects/rename", json={"name": "proj", "project_name": "Paper"})).json()
-    assert renamed["project_name"] == "Paper"
+    renamed = await (await client.post("/api/projects/update", json={
+        "name": "proj", "changes": {"project_name": "Paper", "main_file": "main.tex"}})).json()
+    assert renamed["project_name"] == "Paper" and renamed["main_file"] == "main.tex"
 
     assert (await client.post("/api/projects/delete", json={"name": "proj"})).status == 200
     assert project.exists()  # unregistering never deletes the folder by default
@@ -85,7 +86,7 @@ async def test_folder_picker_keeps_navigation_when_listing_fails(client, tmp_pat
 async def test_client_prefs_round_trip_and_validation(client, isolated_home):
     await client.post("/api/settings/client-prefs", json={"set": {"theme": "dark", "zoom": "1.2"}})
     await client.post("/api/settings/client-prefs", json={"remove": ["zoom"]})
-    assert (await (await client.get("/api/settings/client-prefs")).json()) == {"prefs": {"theme": "dark"}}
+    assert (await (await client.get("/api/settings/client-prefs")).json()) == {"prefs": {"theme": "dark"}, "imported": False}
     bad = await client.post("/api/settings/client-prefs", json={"set": {"n": 1}})
     assert bad.status == 400
     stored = json.loads((isolated_home / "settings.json").read_text(encoding="utf-8"))
@@ -110,3 +111,37 @@ def test_a_corrupt_settings_file_reads_as_defaults(isolated_home):
     isolated_home.mkdir(parents=True, exist_ok=True)
     (isolated_home / "settings.json").write_text("not json", encoding="utf-8")
     assert settings.load()["ui_scale"] == 1.0
+
+
+async def test_update_refuses_unknown_or_mistyped_fields_and_outside_main_files(client, project):
+    await client.post("/api/projects/import", json={"project_path": str(project)})
+    for changes in ({"model": "x"}, {"compile_on_save_full": "yes"}, {"main_file": "../x.tex"}, {"project_name": " "}):
+        response = await client.post("/api/projects/update", json={"name": "proj", "changes": changes})
+        assert response.status == 400, changes
+    data = await (await client.post("/api/projects/update", json={"name": "proj", "changes": {
+        "compile_on_save_partial": True}})).json()
+    assert data["compile_on_save_partial"] is True
+    data = await (await client.post("/api/projects/update", json={"name": "proj", "changes": {
+        "compile_on_save_full": True}})).json()
+    assert data["compile_on_save_full"] is True and data["compile_on_save_partial"] is False
+
+
+def test_a_registry_written_before_a_field_existed_still_loads(isolated_home):
+    import json as _json
+    isolated_home.mkdir(parents=True, exist_ok=True)
+    (isolated_home / "projects.json").write_text(_json.dumps({"projects": [
+        {"name": "a", "project_name": "A", "project_path": "C:/x", "created_at": 1.0}]}), encoding="utf-8")
+    assert projects.list_projects()[0].main_file == ""
+
+
+async def test_the_legacy_localstorage_import_runs_once_and_never_overwrites(client):
+    await client.post("/api/settings/client-prefs", json={"set": {"theme": "light"}})
+    first = await (await client.post("/api/settings/client-prefs", json={
+        "set": {"theme": "dark", "zoom": "2", "lastActiveProject": "p"}, "legacy_import": True})).json()
+    assert first["applied"] is True
+    second = await (await client.post("/api/settings/client-prefs", json={
+        "set": {"zoom": "9"}, "legacy_import": True})).json()
+    assert second["applied"] is False
+    data = await (await client.get("/api/settings/client-prefs")).json()
+    assert data == {"prefs": {"theme": "light", "zoom": "2"}, "imported": True}
+    assert settings.load()["last_active_project"] == "p"

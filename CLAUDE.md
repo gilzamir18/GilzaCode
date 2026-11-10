@@ -26,4 +26,7 @@ All code, comments and documentation are in **English**. User-facing strings in 
 ```powershell
 .venv\Scripts\python.exe -m pytest        # run after every change
 .venv\Scripts\python.exe -m gilzacode     # open the window
+
+# the interface (gui/): lint must report no errors; the build writes gilzacode/static
+cd gui; npx eslint src; npm run test:wysiwyg; npm run build
 ```

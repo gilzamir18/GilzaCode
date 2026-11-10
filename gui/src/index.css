@@ -1,0 +1,4625 @@
+/* GilzaBots design system: indigo-violet palette on VS Code token names.
+   Dark is :root, light is .light-theme; every text pair is AA (>= 4.5:1). */
+:root {
+  /* Tells the native webview renderer (WebKitGTK/QtWebEngine) which palette
+     to use for unstyled native chrome (checkboxes, scrollbars, form-control
+     backgrounds) instead of falling back to the OS theme. Without this, some
+     Linux WebKitGTK builds paint text inputs with the OS light theme even
+     though background-color is set via CSS, because the native widget skin
+     is drawn on top. */
+  color-scheme: dark;
+  /* Accessibility interface scale; see .vscode-app. Overridden at runtime
+     on the document element from the value stored in ui_settings.json. */
+  --ui-scale: 1;
+  /* ── Spacing, shape and dialog insets ───────────────────────────────────
+     The global reset further down zeroes every margin and padding, so an
+     element whose spacing class matches no rule renders flush against its
+     own border — which is exactly how the settings, asset-store and cloud
+     dialogs ended up with their labels, inputs and tabs touching the frame.
+     These tokens are the single place the app's insets are decided: the
+     dialog chrome consumes them directly and the utility layer further down
+     exposes the same scale as classes. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  /* One gutter shared by a dialog's title bar, tab strip, body and footer, so
+     every band lines up on the same vertical rule instead of each drifting to
+     whatever its own markup happened to set. */
+  --modal-gutter: 20px;
+  --modal-band-padding: 14px;
+  --modal-body-padding: 20px;
+  --vscode-bg: #0f1117;
+  --vscode-sidebar-bg: #151821;
+  --vscode-activitybar-bg: #0c0e13;
+  --vscode-editor-bg: #11141b;
+  --vscode-panel-bg: #11141b;
+  /* Backdrop behind the rendered PDF pages. Kept separate from
+     --vscode-editor-bg so the (always white) pages stay visually
+     detached from the canvas in both themes. */
+  --pdf-viewer-bg: #0b0d12;
+  --vscode-statusbar-bg: #5847d6;
+  --vscode-statusbar-fg: #ffffff;
+  --vscode-text-fg: #dcdfe8;
+  --vscode-text-light: #f5f6fa;
+  --vscode-descriptionForeground: #8b90a0;
+  --vscode-border: #262b38;
+  --vscode-active-item: #262a3b;
+  --vscode-hover-item: #1c202b;
+  --vscode-list-hoverBg: rgba(255, 255, 255, 0.04);
+  --vscode-active-border: #8b7cf6;
+  --vscode-input-bg: #191c26;
+  --vscode-input-fg: #dcdfe8;
+  --vscode-input-border: #2c3140;
+  --vscode-button-bg: #6656e0;
+  --vscode-button-hover: #7565ec;
+  --vscode-tab-active-bg: #11141b;
+  --vscode-tab-inactive-bg: #151821;
+  --vscode-terminal-bg: #11141b;
+  --vscode-accent: #8b7cf6;
+  --vscode-list-activeSelectionBg: #2f2a66;
+  --vscode-list-activeSelectionFg: #ffffff;
+  /* Secondary text (paths, hints) drawn on top of an active selection, and
+     the hairline between rows in a dropdown. Both used to be hardcoded white
+     alphas at the call sites, which vanished on the light theme's pale
+     selection band. */
+  --vscode-list-activeSelectionDescriptionFg: rgba(255, 255, 255, 0.7);
+  --vscode-list-separator: rgba(255, 255, 255, 0.03);
+  --vscode-errorForeground: #f87171;
+  --vscode-errorBackground: rgba(248, 113, 113, 0.08);
+  --vscode-editorOverlay: rgba(0, 0, 0, 0.5);
+  
+  /* Markdown blocks */
+  --editor-bg: #11141b;
+  --titlebar-bg: #0c0e13;
+  --border-color: #262b38;
+  --vscode-textPreformat-foreground: #e5c07b;
+  --vscode-widget-border: #262b38;
+  --chat-text: #dcdfe8;
+  --chat-muted: #8b90a0;
+  
+  /* Battery colors */
+  --battery-good: #4ade80;
+  --battery-low: #fbbf24;
+  --battery-exploded: #f87171;
+
+  /* Diff colors */
+  --diff-text-added: #73c991;
+  --diff-bg-added: rgba(115, 201, 145, 0.12);
+  --diff-text-removed: #f48771;
+  --diff-bg-removed: rgba(244, 135, 113, 0.12);
+  --diff-text-meta: #a5b4fc;
+  --diff-text-header: #808080;
+  --diff-text-default: #dcdfe8;
+
+  /* Text selection (native ::selection highlight) */
+  --vscode-selection-bg: #3a3480;
+  --vscode-selection-fg: #ffffff;
+  /* PDF text-layer selection: translucent, so the rendered page glyphs
+     underneath the invisible text layer stay readable while selected. */
+  --pdf-selection-bg: rgba(139, 124, 246, 0.30);
+
+  /* ── Semantic foreground accents ─────────────────────────────────────────
+     The dark values are the literals components used to hardcode inline. Each
+     one has a light counterpart below, picked for AA contrast on the light
+     surfaces (#ffffff editor, #f0f0f0 panel, #ebebeb sidebar) — the dark hues
+     land between 1.5:1 and 2.9:1 there, which is why hardcoding them made
+     text vanish in the light theme.
+     ─────────────────────────────────────────────────────────────────────── */
+  --vscode-text-subtle: #a3a8b8;
+  --vscode-text-muted: #858a9a;
+  --vscode-fg-info: #a5b4fc;
+  --vscode-fg-link: #a99dfb;
+  --vscode-fg-success: #4ade80;
+  --vscode-fg-warning: #facc15;
+  --vscode-fg-gold: #e2b52b;
+  --vscode-fg-folder: #e8a838;
+  --vscode-fg-danger: #f87171;
+  --vscode-fg-teal: #4ec9b0;
+  --vscode-fg-magenta: #da70d6;
+
+  /* ── VS Code vocabulary aliases ──────────────────────────────────────────
+     Names components borrowed from VS Code's own token set but that were
+     never defined here. Every one of them silently fell back to a dark-theme
+     literal (or dropped the declaration entirely, leaving the element
+     unstyled), so they ignored the theme. They are re-declared verbatim in
+     the `.light-theme` block below, and that repetition is required, not an
+     oversight: a custom property whose value contains `var()` is substituted
+     where it is *declared*, not where it is used, so an alias declared only
+     here resolves against this element's (dark) tokens and inherits that
+     frozen value into the light theme — which is exactly how the settings
+     and cloud modals ended up with black title bars on a light body.
+     ─────────────────────────────────────────────────────────────────────── */
+  --vscode-foreground: var(--vscode-text-fg);
+  --vscode-editor-foreground: var(--vscode-text-fg);
+  --vscode-description-fg: var(--vscode-descriptionForeground);
+  --vscode-error-fg: var(--vscode-errorForeground);
+  --vscode-textLink-foreground: var(--vscode-fg-link);
+  --vscode-input-background: var(--vscode-input-bg);
+  --vscode-input-foreground: var(--vscode-input-fg);
+  --vscode-dropdown-background: var(--vscode-input-bg);
+  --vscode-dropdown-foreground: var(--vscode-input-fg);
+  --vscode-dropdown-border: var(--vscode-border);
+  --vscode-button-background: var(--vscode-button-bg);
+  --vscode-button-foreground: #ffffff;
+  --vscode-button-fg: #ffffff;
+  --vscode-button-secondaryBackground: var(--vscode-input-bg);
+  --vscode-button-secondaryForeground: var(--vscode-text-fg);
+  --vscode-badge-background: var(--vscode-active-item);
+  --vscode-list-hoverBackground: var(--vscode-list-hoverBg);
+  --vscode-list-activeSelectionBackground: var(--vscode-list-activeSelectionBg);
+  --vscode-list-activeSelectionForeground: var(--vscode-list-activeSelectionFg);
+  --vscode-hover-bg: var(--vscode-hover-item);
+  --vscode-focusBorder: var(--vscode-active-border);
+  --vscode-titlebar-bg: var(--titlebar-bg);
+  --vscode-titleBar-activeBackground: var(--titlebar-bg);
+  --vscode-titleBar-activeForeground: var(--vscode-text-fg);
+  --vscode-editor-inactiveSelectionBackground: var(--vscode-active-item);
+  --vscode-editor-font-family: "Fira Code", "Courier New", Courier, monospace;
+  --vscode-editor-font: var(--vscode-editor-font-family);
+  --vscode-font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ─── Light Theme ──────────────────────────────────────────────────────────
+   GilzaBots indigo-violet palette, light counterpart of the dark tokens.
+   Main surfaces:
+     page bg        #f7f8fb
+     sidebar        #eef0f6
+     editor         #ffffff
+     panel          #f3f4f8
+   Text:
+     primary        #171a23   (17.4:1 on white)
+     secondary      #5d6375   (6.0:1 on white, 5.3:1 on the sidebar)
+   Accent:
+     violet         #5847d6   (primary interactive, 6.4:1 on white)
+     violet-hover   #4636c4
+   ─────────────────────────────────────────────────────────────────────── */
+.light-theme {
+  color-scheme: light;
+  --vscode-bg: #f7f8fb;
+  --vscode-sidebar-bg: #eef0f6;
+  --vscode-activitybar-bg: #e7e9f1;
+  --vscode-editor-bg: #ffffff;
+  --vscode-panel-bg: #f3f4f8;
+  --pdf-viewer-bg: #e4e6ee;
+  --vscode-statusbar-bg: #5847d6;
+  --vscode-statusbar-fg: #ffffff;
+  --vscode-text-fg: #171a23;
+  --vscode-text-light: #171a23;
+  --vscode-descriptionForeground: #5d6375;
+  --vscode-border: #dde1ea;
+  --vscode-active-item: #e6e2fd;
+  --vscode-hover-item: #f0eefe;
+  --vscode-list-hoverBg: #f0eefe;
+  --vscode-active-border: #5847d6;
+  --vscode-input-bg: #ffffff;
+  --vscode-input-fg: #171a23;
+  --vscode-input-border: #c9cedb;
+  --vscode-button-bg: #5847d6;
+  --vscode-button-hover: #4636c4;
+  --vscode-tab-active-bg: #ffffff;
+  --vscode-tab-inactive-bg: #eef0f6;
+  --vscode-terminal-bg: #ffffff;
+  --vscode-accent: #5847d6;
+  --vscode-list-activeSelectionBg: #e6e2fd;
+  --vscode-list-activeSelectionFg: #2e2391;
+  --vscode-list-activeSelectionDescriptionFg: rgba(46, 35, 145, 0.82);
+  --vscode-list-separator: rgba(0, 0, 0, 0.06);
+  --vscode-errorForeground: #b42318;
+  --vscode-errorBackground: rgba(180, 35, 24, 0.07);
+  --vscode-editorOverlay: rgba(255, 255, 255, 0.72);
+
+  /* Markdown blocks */
+  --editor-bg: #f7f8fb;
+  --titlebar-bg: #e9ebf2;
+  --border-color: #dde1ea;
+  --vscode-textPreformat-foreground: #3b2f9e;
+  --vscode-widget-border: #dde1ea;
+  --chat-text: #171a23;
+  --chat-muted: #5d6375;
+
+  /* Battery colors */
+  --battery-good: #059669;
+  --battery-low: #d97706;
+  --battery-exploded: #dc2626;
+
+  /* Diff colors */
+  --diff-text-added: #1e8745;
+  --diff-bg-added: rgba(46, 160, 67, 0.12);
+  --diff-text-removed: #d1242f;
+  --diff-bg-removed: rgba(248, 81, 73, 0.12);
+  --diff-text-meta: #5847d6;
+  --diff-text-header: #6a737d;
+  --diff-text-default: #171a23;
+
+  /* Text selection (native ::selection highlight) */
+  --vscode-selection-bg: #d9d3fc;
+  --vscode-selection-fg: #171a23;
+  --pdf-selection-bg: rgba(88, 71, 214, 0.24);
+
+  /* Semantic foreground accents — darkened counterparts of the dark-theme
+     hues, all at or above 4.5:1 on #ffffff and 3:1 on #ebebeb. */
+  --vscode-text-subtle: #5a6070;
+  --vscode-text-muted: #636979;
+  --vscode-fg-info: #0a5aa0;
+  --vscode-fg-link: #5847d6;
+  --vscode-fg-success: #137a3c;
+  --vscode-fg-warning: #8a6100;
+  --vscode-fg-gold: #8a6100;
+  --vscode-fg-folder: #8f6000;
+  --vscode-fg-danger: #b42318;
+  --vscode-fg-teal: #0d6e61;
+  --vscode-fg-magenta: #a1279c;
+
+  /* The same aliases as `:root`, re-declared so they resolve against the light
+     tokens above — see the note there on where `var()` is substituted. */
+  --vscode-foreground: var(--vscode-text-fg);
+  --vscode-editor-foreground: var(--vscode-text-fg);
+  --vscode-description-fg: var(--vscode-descriptionForeground);
+  --vscode-error-fg: var(--vscode-errorForeground);
+  --vscode-textLink-foreground: var(--vscode-fg-link);
+  --vscode-input-background: var(--vscode-input-bg);
+  --vscode-input-foreground: var(--vscode-input-fg);
+  --vscode-dropdown-background: var(--vscode-input-bg);
+  --vscode-dropdown-foreground: var(--vscode-input-fg);
+  --vscode-dropdown-border: var(--vscode-border);
+  --vscode-button-background: var(--vscode-button-bg);
+  --vscode-button-foreground: #ffffff;
+  --vscode-button-fg: #ffffff;
+  --vscode-button-secondaryBackground: var(--vscode-input-bg);
+  --vscode-button-secondaryForeground: var(--vscode-text-fg);
+  --vscode-badge-background: var(--vscode-active-item);
+  --vscode-list-hoverBackground: var(--vscode-list-hoverBg);
+  --vscode-list-activeSelectionBackground: var(--vscode-list-activeSelectionBg);
+  --vscode-list-activeSelectionForeground: var(--vscode-list-activeSelectionFg);
+  --vscode-hover-bg: var(--vscode-hover-item);
+  --vscode-focusBorder: var(--vscode-active-border);
+  --vscode-titlebar-bg: var(--titlebar-bg);
+  --vscode-titleBar-activeBackground: var(--titlebar-bg);
+  --vscode-titleBar-activeForeground: var(--vscode-text-fg);
+  --vscode-editor-inactiveSelectionBackground: var(--vscode-active-item);
+}
+
+/* ── Native text selection ────────────────────────────────────────────────
+   The UA default selection color follows the resolved `color-scheme`, which
+   on some Linux WebKitGTK/QtWebEngine builds paints a near-white highlight —
+   invisible over the white surfaces of the light theme. Declare the colors
+   explicitly for both themes so selected text is always visible.
+   ────────────────────────────────────────────────────────────────────── */
+::selection {
+  background-color: var(--vscode-selection-bg);
+  color: var(--vscode-selection-fg);
+}
+
+::-moz-selection {
+  background-color: var(--vscode-selection-bg);
+  color: var(--vscode-selection-fg);
+}
+
+/* The pdf.js text layer draws invisible glyphs on top of the rendered canvas
+   text, so selected text there must keep its transparent color — only the
+   highlight background may show. Because that background is painted *over*
+   the canvas that carries the visible glyphs, it must be translucent: an
+   opaque color hides the very text being selected. */
+.textLayer ::selection {
+  background-color: var(--pdf-selection-bg);
+  color: transparent;
+}
+
+.textLayer ::-moz-selection {
+  background-color: var(--pdf-selection-bg);
+  color: transparent;
+}
+
+/* ── Light-theme component overrides ──────────────────────────────────────
+   These target elements that use hardcoded colors not covered by variables.
+   ────────────────────────────────────────────────────────────────────── */
+
+/* Tree nodes */
+.light-theme .vscode-tree-node {
+  color: var(--vscode-text-fg);
+}
+.light-theme .vscode-tree-node:hover {
+  background-color: var(--vscode-hover-item);
+}
+.light-theme .vscode-tree-node.active {
+  background-color: var(--vscode-active-item);
+  color: #003a80;
+}
+
+/* Tabs */
+.light-theme .vscode-tab {
+  border-right-color: #d0d0d0;
+}
+.light-theme .vscode-tab span {
+  color: #555555 !important;
+}
+.light-theme .vscode-tab.active span {
+  color: var(--vscode-text-fg) !important;
+}
+.light-theme .vscode-tab-close-btn {
+  color: #666666;
+}
+.light-theme .vscode-tab-close-btn:hover {
+  background-color: var(--vscode-border);
+  color: var(--vscode-text-fg);
+}
+
+/* Sidebar title / section labels */
+.light-theme .vscode-sidebar-title {
+  color: #555555;
+}
+.light-theme .vscode-sidebar-section-title {
+  color: #666666;
+}
+
+/* Project items */
+.light-theme .vscode-project-item {
+  color: var(--vscode-text-fg);
+}
+.light-theme .vscode-project-item:hover {
+  background-color: var(--vscode-hover-item);
+  color: #003a80;
+}
+.light-theme .vscode-project-item.active {
+  background-color: var(--vscode-active-item);
+  color: #003a80;
+}
+
+/* Bottom panel tabs */
+.light-theme .vscode-bottom-tab {
+  color: #555555;
+}
+.light-theme .vscode-bottom-tab.active {
+  color: var(--vscode-text-fg);
+  border-bottom-color: var(--vscode-active-border);
+}
+
+/* Bottom panel logs */
+.light-theme .vscode-logs {
+  background-color: #ffffff;
+  color: var(--vscode-text-fg);
+}
+
+/* Chat panel */
+.light-theme .vscode-chat {
+  background-color: #f0f0f0;
+  border-left-color: var(--vscode-border);
+}
+.light-theme .vscode-chat-header {
+  background-color: var(--vscode-sidebar-bg);
+}
+.light-theme .vscode-chat-history {
+  background-color: var(--vscode-bg);
+}
+.light-theme .vscode-chat-msg-content {
+  color: var(--vscode-text-fg);
+  border-left-color: #b0b8c8;
+}
+
+/* Chat message header colors — override inline style values */
+.light-theme .vscode-chat-msg-header {
+  color: #555555;
+}
+
+/* Chat themed text utility classes — light overrides */
+.light-theme .chat-text-primary {
+  color: var(--vscode-text-fg) !important;
+}
+.light-theme .chat-text-secondary {
+  color: #444444 !important;
+}
+.light-theme .chat-inline-code {
+  background: #e8edf5 !important;
+  color: #1a3a6b !important;
+}
+/* Chat header color classes — light overrides */
+.light-theme .chat-header-user {
+  color: var(--vscode-button-hover) !important;
+}
+.light-theme .chat-header-agent {
+  color: #6f3fa8 !important;
+}
+.light-theme .vscode-chat-form {
+  background-color: var(--vscode-sidebar-bg);
+  border-top-color: var(--vscode-border);
+}
+.light-theme .vscode-chat-toolbar {
+  background-color: var(--vscode-bg);
+  border-bottom-color: var(--vscode-border);
+}
+.light-theme .vscode-chat-tool-btn {
+  color: #444444;
+}
+.light-theme .vscode-chat-tool-btn:hover {
+  background-color: var(--vscode-hover-item);
+  color: #003a80;
+}
+
+/* Context menu */
+.light-theme .vscode-context-menu {
+  background-color: #ffffff;
+  border-color: #c0c0c0;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+}
+.light-theme .vscode-context-menu-item {
+  color: var(--vscode-text-fg);
+}
+.light-theme .vscode-context-menu-item:hover {
+  background-color: var(--vscode-accent);
+  color: #ffffff;
+}
+
+/* Scrollbars on light mode */
+.light-theme ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.22);
+}
+.light-theme ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* Resizers */
+.light-theme .vscode-resizer-horizontal,
+.light-theme .vscode-resizer-vertical {
+  background-color: #d0d0d0;
+  border-color: #c0c0c0;
+}
+
+/* Buttons */
+.light-theme .vscode-bottom-panel-clear-btn {
+  color: #444444;
+}
+.light-theme .vscode-bottom-panel-clear-btn:hover {
+  background-color: rgba(88, 71, 214, 0.1);
+  color: #003a80;
+}
+
+/* Activity bar icon color hint */
+.light-theme .vscode-activitybar-btn {
+  color: #6e6e6e;
+}
+.light-theme .vscode-activitybar-btn.active,
+.light-theme .vscode-activitybar-btn:hover {
+  color: var(--vscode-text-fg);
+}
+
+/* Input/select inside light theme */
+.light-theme input,
+.light-theme select,
+.light-theme textarea {
+  background-color: #ffffff;
+  border-color: #bdbdbd;
+  color: var(--vscode-text-fg);
+}
+.light-theme input:focus,
+.light-theme select:focus,
+.light-theme textarea:focus {
+  border-color: var(--vscode-accent);
+}
+
+/* Source control */
+.git-file-row,
+.git-commit-row,
+.git-review-row {
+  border-radius: 3px;
+  background: var(--vscode-list-hoverBg);
+}
+.git-file-row {
+  margin-bottom: 2px;
+}
+.git-file-row:hover,
+.git-commit-row:hover,
+.git-review-row:hover {
+  background: var(--vscode-hover-item);
+}
+.git-commit-row {
+  padding: 6px 8px;
+  font-size: 11px;
+}
+.git-review-row {
+  padding: 12px;
+  font-size: 12px;
+  border: 1px solid var(--vscode-border);
+}
+.git-review-file-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+.git-review-file-select {
+  min-width: 180px;
+  max-width: min(100%, 520px);
+  height: 26px;
+  padding: 3px 6px;
+  font-size: 11px;
+}
+.git-review-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 12px;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+.git-review-page-button {
+  min-width: 82px;
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--vscode-border);
+  border-radius: 3px;
+  background: var(--vscode-input-bg);
+  color: var(--vscode-text-fg);
+  cursor: pointer;
+  font-size: 11px;
+}
+.git-review-page-button:hover:not(:disabled) {
+  background: var(--vscode-hover-item);
+}
+.git-review-page-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.git-review-page-status {
+  min-width: 0;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.git-icon-button {
+  padding: 2px;
+  border: none;
+  background: none;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  border-radius: 3px;
+}
+.git-icon-button:hover {
+  background: var(--vscode-hover-item);
+  color: var(--vscode-text-fg);
+}
+
+
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--vscode-bg);
+  color: var(--vscode-text-fg);
+  overflow: hidden;
+  height: 100vh;
+  font-size: 13px;
+}
+
+/* Custom Scrollbars to match VSCode */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(121, 121, 121, 0.4);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 100, 100, 0.7);
+}
+
+code, pre {
+  font-family: "Fira Code", "Courier New", Courier, monospace;
+}
+
+/* VSCode Input Elements */
+input, select, textarea {
+  background-color: var(--vscode-input-bg);
+  border: 1px solid var(--vscode-border);
+  color: var(--vscode-text-fg);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  outline: none;
+}
+
+select option {
+  background-color: var(--vscode-input-bg);
+  color: var(--vscode-text-fg);
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--vscode-active-border);
+}
+
+/* VSCode Button */
+.vscode-button {
+  background-color: var(--vscode-button-bg);
+  color: #ffffff;
+  border: none;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.vscode-button:hover:not(:disabled) {
+  background-color: var(--vscode-button-hover);
+}
+
+.vscode-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* Secondary actions share the same sizing and interaction affordances as primary buttons. */
+.vscode-button-secondary {
+  background-color: var(--vscode-input-bg);
+  color: var(--vscode-text-fg);
+  border: 1px solid var(--vscode-border);
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.vscode-button-secondary:hover:not(:disabled) {
+  background-color: var(--vscode-list-hoverBg);
+  border-color: var(--vscode-active-border);
+}
+
+.vscode-button-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.vscode-icon-button,
+.vscode-modal-close {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vscode-icon-button {
+  padding: 4px;
+  margin-left: 4px;
+}
+
+.vscode-modal-close {
+  padding: 4px;
+}
+
+.vscode-icon-button:hover,
+.vscode-modal-close:hover {
+  background-color: var(--vscode-list-hoverBg);
+  border-color: var(--vscode-border);
+  color: var(--vscode-text-fg);
+}
+
+.vscode-icon-button:disabled,
+.vscode-modal-close:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.vscode-icon-button:disabled:hover,
+.vscode-modal-close:disabled:hover {
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--vscode-descriptionForeground);
+}
+
+.vscode-icon-button-danger {
+  color: var(--vscode-errorForeground);
+}
+
+/* Small icon actions inside sidebar headers (open folder, settings, remove
+   project, refresh). Colors come from theme tokens so the hover state stays
+   readable in the light theme, where a white-on-white highlight used to make
+   the icon disappear. */
+.vscode-sidebar-action-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--vscode-descriptionForeground);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.vscode-sidebar-action-btn:hover {
+  background-color: var(--vscode-hover-item);
+  color: var(--vscode-text-fg);
+}
+
+.vscode-sidebar-action-btn:focus-visible {
+  outline: 1px solid var(--vscode-active-border);
+  outline-offset: 1px;
+}
+
+.vscode-button:focus-visible,
+.vscode-button-secondary:focus-visible,
+.vscode-icon-button:focus-visible,
+.vscode-modal-close:focus-visible {
+  outline: 1px solid var(--vscode-active-border);
+  outline-offset: 2px;
+}
+
+/* App layout and columns */
+.vscode-app {
+  display: flex;
+  flex-direction: column;
+  /* ── Accessibility interface scale ──────────────────────────────────────
+     `zoom` rather than a transform, so the tree actually reflows at the new
+     size. It also scales the pixel values that are written directly into
+     component inline styles, which no amount of CSS variables could reach.
+
+     Viewport units are the one length `zoom` does not compensate for: `100vh`
+     resolves against the real viewport and is *then* multiplied by the zoom,
+     overflowing the screen. Dividing cancels that out, and --ui-vh / --ui-vw
+     give the rest of the app a viewport unit that stays correct inside the
+     zoomed subtree — use those instead of vh/vw anywhere under .vscode-app.
+
+     Percentages and `width: auto` need no such treatment: Chromium 128+
+     compensates them at the zoom boundary. The division above is correct
+     under both that behaviour and the older non-compensating one, so the
+     layout holds on the Qt/Chromium and the WebKitGTK webview backend
+     alike. */
+  zoom: var(--ui-scale, 1);
+  --ui-vh: calc(1vh / var(--ui-scale, 1));
+  --ui-vw: calc(1vw / var(--ui-scale, 1));
+  height: calc(100 * var(--ui-vh));
+  width: calc(100 * var(--ui-vw));
+  overflow: hidden;
+}
+
+/* xterm's cell metrics deliberately ignore ancestor scaling, while its mouse
+   offsets come from the scaled viewport. Cancel the app zoom at this boundary
+   so both values share one coordinate space. JavaScript multiplies xterm's
+   configured font size by --ui-scale, preserving its visual size and grid. */
+.xterm-coordinate-space {
+  width: 100%;
+  height: 100%;
+  zoom: calc(1 / var(--ui-scale, 1));
+}
+
+.vscode-main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Activity Bar
+   Spacing comes from the density tier the component measured (see
+   utils/activityBarDensity.js): a short window or a large interface scale
+   tightens the strip instead of clipping the buttons at the bottom, and only
+   when even the densest tier overflows does the bar scroll. */
+.vscode-activitybar {
+  width: 48px;
+  background-color: var(--vscode-activitybar-bg);
+  border-right: 1px solid var(--vscode-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--activitybar-padding-y, 12px) 0;
+  flex-shrink: 0;
+  /* Last resort once the tiers run out: scrollable, so no button is ever
+     unreachable. The scrollbar is hidden because it would cover a third of a
+     48px strip; the edge fades below are the affordance instead. */
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.vscode-activitybar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* Masks on a scroll container stay pinned to its box, so these fade whichever
+   edge still has a hidden button behind it. */
+.vscode-activitybar[data-fade-top='true'][data-fade-bottom='true'] {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
+}
+
+.vscode-activitybar[data-fade-top='true'][data-fade-bottom='false'] {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 16px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 16px);
+}
+
+.vscode-activitybar[data-fade-top='false'][data-fade-bottom='true'] {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent 100%);
+}
+
+.vscode-activitybar-top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--activitybar-gap, 16px);
+  align-items: center;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* `margin-top: auto` instead of `justify-content: space-between` on the bar:
+   both pin this group to the bottom when there is room, but only this one
+   keeps the first button reachable once the content overflows. */
+.vscode-activitybar-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+.vscode-activitybar-btn {
+  background: transparent;
+  border: none;
+  color: #858585;
+  padding: var(--activitybar-btn-padding-y, 8px) 8px;
+  cursor: pointer;
+  width: 100%;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-left: 2px solid transparent;
+  outline: none;
+}
+
+.vscode-activitybar-btn.active {
+  color: #ffffff;
+  border-left-color: var(--vscode-active-border);
+}
+
+.vscode-activitybar-btn:hover {
+  color: #ffffff;
+}
+
+/* Two gears live in this strip — one for the app/editor settings, one for the
+   open project's — and the glyph alone cannot say which is which. The letter
+   rides in the icon's bottom-right corner on the bar's own background, so it
+   punches a hole in the gear instead of blending into its teeth, and takes
+   `currentColor` so it follows the button's idle, hover, active and disabled
+   colors without needing a second set of rules. */
+.vscode-activitybar-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vscode-activitybar-icon-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  min-width: var(--activitybar-badge-size, 11px);
+  height: var(--activitybar-badge-size, 11px);
+  padding: 0 1px;
+  box-sizing: border-box;
+  border-radius: 3px;
+  background-color: var(--vscode-activitybar-bg);
+  color: currentColor;
+  font-size: var(--activitybar-badge-font, 9px);
+  font-weight: 700;
+  line-height: var(--activitybar-badge-size, 11px);
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Sidebar */
+.vscode-sidebar {
+  width: 260px;
+  background-color: var(--vscode-sidebar-bg);
+  border-right: 1px solid var(--vscode-border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.vscode-sidebar-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--vscode-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vscode-sidebar-title {
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: #969696;
+  letter-spacing: 0.5px;
+}
+
+.vscode-sidebar-section {
+  border-bottom: 1px solid var(--vscode-border);
+  padding: 8px;
+}
+
+.vscode-sidebar-section-title {
+  font-size: 11px;
+  font-weight: bold;
+  color: #808080;
+  text-transform: uppercase;
+  padding: 2px 4px;
+  margin-bottom: 4px;
+}
+
+.vscode-sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+/* Project item */
+.vscode-project-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  cursor: pointer;
+  color: #b0b0b0;
+  border-radius: 2px;
+}
+
+.vscode-project-item:hover {
+  background-color: var(--vscode-hover-item);
+  color: #ffffff;
+}
+
+.vscode-project-item.active {
+  background-color: var(--vscode-active-item);
+  color: #ffffff;
+}
+
+/* File Tree Node */
+.vscode-tree-node {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  color: var(--vscode-text-fg);
+  font-size: 13px;
+}
+
+.vscode-tree-node:hover {
+  background-color: var(--vscode-hover-item);
+}
+
+.vscode-tree-node.active {
+  background-color: var(--vscode-active-item);
+  color: #ffffff;
+  border-left: 2px solid var(--vscode-active-border);
+}
+
+/* Inline creation row (new file / directory / presentation) */
+.inline-create-error {
+  margin: 0 8px 4px 28px;
+  padding: 3px 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--vscode-text-fg);
+  background: var(--vscode-inputValidation-errorBackground, rgba(90, 29, 29, 0.9));
+  border: 1px solid var(--vscode-errorForeground, #f48771);
+  overflow-wrap: anywhere;
+}
+
+/* Editor Panel */
+.vscode-editor-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--vscode-bg);
+  overflow: hidden;
+}
+
+.vscode-tabs {
+  height: 35px;
+  background-color: var(--vscode-tab-inactive-bg);
+  border-bottom: 1px solid var(--vscode-border);
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.vscode-tab-list {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.vscode-tab {
+  height: 100%;
+  flex: 0 0 132px;
+  max-width: 132px;
+  background-color: var(--vscode-tab-inactive-bg);
+  border-top: 2px solid transparent;
+  padding: 0 10px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-right: 1px solid var(--vscode-border);
+  min-width: 0;
+}
+
+.vscode-tab-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vscode-tab.active {
+  background-color: var(--vscode-tab-active-bg);
+  border-top-color: var(--vscode-active-border);
+}
+
+.vscode-editor-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 100%;
+  padding: 0 5px;
+  border-left: 1px solid var(--vscode-border);
+  background-color: var(--vscode-tab-inactive-bg);
+  white-space: nowrap;
+}
+
+.vscode-editor-action-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--vscode-text-fg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.vscode-editor-action-btn:hover:not(:disabled) {
+  background: var(--vscode-hover-bg);
+}
+
+.vscode-editor-action-btn-primary {
+  color: #73c991;
+}
+
+.vscode-editor-action-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.vscode-chat-sidebar-history-pane {
+  flex: 0 1 34%;
+  min-height: 120px;
+  overflow: hidden;
+}
+
+.vscode-chat-sidebar-divider {
+  height: 4px;
+  flex: 0 0 4px;
+  background: var(--vscode-border);
+}
+
+.vscode-chat-sidebar-explorer-pane {
+  flex: 1 1 66%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.vscode-tab-close-btn {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  color: #858585;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+}
+
+.vscode-tab-close-btn:hover {
+  background-color: var(--vscode-active-item);
+  color: #ffffff;
+  border-radius: 50%;
+}
+
+.save-pulse {
+  animation: savePulse 1s ease-in-out infinite;
+}
+
+@keyframes savePulse {
+  0%, 100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.vscode-editor-container {
+  flex: 1;
+  position: relative;
+  background-color: var(--vscode-bg);
+}
+
+/* Bottom Panel */
+.vscode-bottom-panel {
+  border-top: 1px solid var(--vscode-border);
+  background-color: var(--vscode-bg);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+/* Full-width chat layout with the existing diagnostics panel docked beneath it. */
+.vscode-chat-bottom-layout {
+  min-width: 0;
+}
+
+/* ── Studio layout ──────────────────────────────────────────────────────────
+   Editor + preview across the top, chat and terminal side by side underneath,
+   with the workspace explorer docked to the left of all three (retracted on
+   entry). The three panels are the IDE layout's own components left where they
+   already sit in the React tree — switching layouts must not remount the editor
+   or tear down a live terminal — so the layout is expressed entirely as grid
+   placement, and each panel is routed to its area by the class it already
+   carries. The templates themselves are computed in utils/studioLayout.js and
+   applied inline, since the display switch on <main> is inline too. */
+.vscode-editor-panel.vscode-studio-layout {
+  grid-template-areas:
+    "editor   editor   editor"
+    "rowsplit rowsplit rowsplit"
+    "chat     colsplit terminal";
+  min-width: 0;
+  min-height: 0;
+}
+
+/* `.vscode-editor-panel` is EditorPanel's own root; `.vscode-editor-container`
+   is what it renders instead when no file is open. */
+.vscode-studio-layout > .vscode-editor-panel,
+.vscode-studio-layout > .vscode-editor-container {
+  grid-area: editor;
+}
+
+.vscode-studio-layout > .vscode-chat {
+  grid-area: chat;
+  /* The panel's own 320px default would win over the grid track and leave a
+     gap beside the terminal; here the column is what sets the width. */
+  width: auto;
+  /* The chat is on the left here, so its rule borders the terminal instead of
+     the editor it used to hang off. */
+  border-left: none;
+  border-right: 1px solid var(--vscode-border);
+}
+
+.vscode-studio-layout > .vscode-studio-terminal-cell {
+  grid-area: terminal;
+  flex-direction: column;
+}
+
+.vscode-studio-layout > .vscode-studio-row-resizer { grid-area: rowsplit; }
+.vscode-studio-layout > .vscode-studio-col-resizer { grid-area: colsplit; }
+
+/* Every grid item here holds a scrollable panel, and the default `min-*: auto`
+   would let its content set the track size instead of the other way round —
+   which is how the terminal ends up taller than the row it lives in. */
+.vscode-studio-layout > * {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The panel fills the cell rather than carrying its own pixel height (see
+   BottomPanel's `fillContainer`), so the row handle above is what sizes it. */
+.vscode-studio-terminal-cell > .vscode-bottom-panel {
+  flex: 1;
+  min-height: 0;
+}
+
+.vscode-chat-bottom-layout > .vscode-chat {
+  min-height: 0;
+}
+.vscode-bottom-tabs {
+  height: 30px;
+  background-color: var(--vscode-sidebar-bg);
+  border-bottom: 1px solid var(--vscode-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+}
+
+.vscode-bottom-tab-list {
+  display: flex;
+  gap: 16px;
+  height: 100%;
+}
+
+.vscode-bottom-tab {
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: #808080;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  height: 100%;
+}
+
+.vscode-bottom-tab.active {
+  color: #ffffff;
+  border-bottom: 2px solid var(--vscode-active-border);
+}
+
+.vscode-logs {
+  flex: 1;
+  padding: 12px;
+  overflow-y: auto;
+  font-family: "Fira Code", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  background-color: var(--vscode-terminal-bg);
+}
+
+/* Copilot Chat (Right) */
+.vscode-chat {
+  width: 320px;
+  background-color: var(--vscode-sidebar-bg);
+  border-left: 1px solid var(--vscode-border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.vscode-chat-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--vscode-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  /* `.vscode-chat` clips its overflow, so anything the header pushes past the
+     panel's right edge (the close button, last in the row) becomes invisible
+     and unclickable. Wrapping is the last-resort guarantee that it never
+     happens; the container queries below keep the row on a single line for the
+     usual panel widths by dropping the lowest-priority labels first. */
+  flex-wrap: wrap;
+  container-type: inline-size;
+}
+
+.vscode-chat-header-title {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.vscode-chat-header-title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The actions never shrink: their children cannot shrink either, so a shrinking
+   container would just let them spill out of it. */
+.vscode-chat-header-actions {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.vscode-chat-header-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+}
+
+/* Progressive disclosure, widest-first: the token counter detail (still in the
+   tooltip) goes first, then the "hide think" label (still in its tooltip). */
+@container (max-width: 494px) {
+  .vscode-chat-context-detail {
+    display: none;
+  }
+}
+
+@container (max-width: 432px) {
+  .vscode-chat-hide-think-label {
+    display: none;
+  }
+}
+
+/* Compact chat (utils/chatCompact.js): one header line, the conversation and
+   the prompt. The header has a fixed height so the controls overlay can be
+   placed right under it and sized to what is left of the panel. */
+.vscode-chat.is-compact {
+  --chat-compact-header-height: 30px;
+  position: relative;
+}
+
+.vscode-chat-header.is-compact {
+  height: var(--chat-compact-header-height);
+  padding: 0 8px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.vscode-chat-header.is-compact .vscode-chat-header-title {
+  flex: 1 1 auto;
+}
+
+.vscode-chat-header.is-compact .vscode-chat-header-actions {
+  gap: 6px !important;
+}
+
+.vscode-chat-header.is-compact .vscode-chat-context-badge {
+  margin-right: 2px !important;
+}
+
+.vscode-chat-header.is-compact .vscode-chat-context-detail {
+  display: none;
+}
+
+.vscode-chat-compact-select {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  height: 22px;
+  padding: 0 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--vscode-text-fg);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.vscode-chat-compact-select:hover,
+.vscode-chat-compact-select:focus {
+  border-color: var(--vscode-border);
+  background: var(--vscode-input-bg);
+  outline: none;
+}
+
+.vscode-chat-compact-select option {
+  background: var(--vscode-input-bg);
+  color: var(--vscode-text-fg);
+  font-weight: normal;
+}
+
+.vscode-chat-compact-toggle {
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--vscode-text-fg);
+}
+
+.vscode-chat-compact-toggle:hover,
+.vscode-chat-compact-toggle.active {
+  color: var(--vscode-fg-teal);
+  background: var(--vscode-hover-item);
+}
+
+/* In the full panel the control rows are ordinary children of the chat. */
+.vscode-chat-controls-inline {
+  display: contents;
+}
+
+.vscode-chat-compact-controls {
+  position: absolute;
+  top: var(--chat-compact-header-height);
+  left: 0;
+  right: 0;
+  max-height: calc(100% - var(--chat-compact-header-height));
+  overflow-y: auto;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--vscode-sidebar-bg);
+  border-bottom: 1px solid var(--vscode-border);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+.vscode-overflow-menu-zoom-row {
+  cursor: default;
+}
+
+.vscode-overflow-menu-zoom-row .vscode-chat-header-btn {
+  background: transparent;
+  border: none;
+  color: var(--vscode-text-fg);
+  cursor: pointer;
+}
+
+.vscode-overflow-menu-zoom-row .vscode-chat-header-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.vscode-overflow-menu-zoom-row .vscode-chat-zoom-reset {
+  border: 1px solid var(--vscode-border);
+  border-radius: 3px;
+  font-size: 11px;
+  line-height: 1;
+  padding: 2px 5px;
+  min-width: 34px;
+}
+
+.vscode-chat-form.is-compact {
+  padding: 6px 8px;
+  container-type: inline-size;
+}
+
+/* The effort selector sits in the input row here, bottom-aligned with the
+   single-line textarea like the attachment button beside it. */
+.vscode-chat-form.is-compact .vscode-chat-input-row > .vscode-chat-mode-selector-wrap {
+  flex-shrink: 0;
+  margin-bottom: 5px;
+}
+
+/* On a narrow cell the effort label goes first (it stays in the tooltip and
+   the menu); the Zap icon keeps its color-coded level. */
+@container (max-width: 380px) {
+  .vscode-chat-form.is-compact .vscode-chat-mode-btn-label {
+    display: none;
+  }
+}
+
+.vscode-chat-toolbar {
+  display: flex;
+  border-bottom: 1px solid var(--vscode-border);
+  background-color: var(--vscode-bg);
+}
+
+.vscode-chat-tool-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--vscode-border);
+  color: #a0a0a0;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 6px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.vscode-chat-tool-btn:hover {
+  background-color: var(--vscode-hover-item);
+  color: #ffffff;
+}
+
+.vscode-chat-history {
+  flex: 1;
+  overflow-y: auto;
+  /* The panel places the view itself (utils/chatScroll.js). Browser scroll
+     anchoring fought it: when a finished reply replaced the live stream, the
+     reply's row was inserted above the still-visible live block, and the
+     browser shifted the view to keep that block in place -- which is the end
+     of the history -- before the panel could anchor the reply's first line. */
+  overflow-anchor: none;
+  padding: 16px;
+  /* Matches the bottom padding, so a sticky table scrollbar sits flush with
+     the panel edge instead of floating above it. Both this inset and the
+     padding are scaled by the `zoom` this element carries, so they stay in
+     step at every zoom level. */
+  --chat-sticky-bottom-inset: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background-color: var(--vscode-sidebar-bg);
+}
+
+/* --chat-font-scale is the text-scaling path for the comparison panel, which
+   has no zoom of its own. The main chat history scales with `zoom` instead and
+   must NOT also set the variable: the two compound, and a control reading 150%
+   would render text at 225%. */
+.vscode-chat-msg-header {
+  font-size: calc(11px * var(--chat-font-scale, 1));
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.vscode-chat-msg-content {
+  font-size: calc(13px * var(--chat-font-scale, 1));
+  line-height: 1.6;
+  color: var(--vscode-text-fg);
+  padding-left: 8px;
+  border-left: 1px solid var(--vscode-border);
+  white-space: pre-wrap;
+}
+
+/* ── Chat code blocks (see ChatCodeBlock in formatMessage.jsx) ──────────── */
+.chat-code-block {
+  margin: 8px 0;
+  border-radius: 4px;
+  border: 1px solid var(--border-color, #3c3c3c);
+  /* `clip`, not `hidden`: `hidden` makes the block a scroll container, which
+     would pin the sticky header to the block itself instead of the chat
+     viewport. */
+  overflow: clip;
+}
+
+.chat-code-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 4px 2px 10px;
+  background: var(--titlebar-bg, #1a1a1a);
+  border-bottom: 1px solid var(--border-color, #3c3c3c);
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground, #888);
+  white-space: normal;
+}
+
+.chat-code-lang {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-code-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--vscode-descriptionForeground, #888);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.chat-code-copy:hover {
+  background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+  color: var(--vscode-text-fg, #cccccc);
+}
+
+.chat-code-copy-copied {
+  color: var(--vscode-fg-teal, #4ec9b0);
+}
+
+.chat-code-copy-failed {
+  color: var(--vscode-errorForeground, #f48771);
+}
+
+.chat-code-pre {
+  margin: 0;
+  padding: 10px;
+  background: var(--editor-bg, #1e1e1e);
+  color: var(--vscode-textPreformat-foreground, #d7ba7d);
+  overflow-x: auto;
+  font-size: 12px;
+  line-height: 1.5;
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── Wide chat tables (see ChatTable in formatMessage.jsx) ──────────────── */
+.chat-table-block {
+  margin: 10px 0;
+  /* `white-space: pre-wrap` is inherited from the message container and would
+     otherwise make every cell refuse to wrap, inflating the table's width. */
+  white-space: normal;
+}
+
+.chat-table-scroll {
+  overflow-x: auto;
+}
+
+/* The wrapper's native scrollbar sits at the bottom of a table that is often
+   taller than the viewport, so it is off screen exactly when it is needed.
+   It is hidden in favour of the sticky proxy bar below. */
+.chat-table-scroll-hidden-bar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.chat-table-scroll-hidden-bar::-webkit-scrollbar {
+  height: 0;
+  display: none;
+}
+
+.chat-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+  line-height: 1.5;
+  border: 1px solid var(--border-color, #3c3c3c);
+}
+
+/* Proxy scrollbar: pinned to the bottom edge of the chat viewport while the
+   table is in view, so a wide table can always be panned. */
+.chat-table-hbar {
+  position: sticky;
+  /* `bottom: 0` pins to the scrollport's content box, so the scroll
+     container's bottom padding shows up as a gap under the bar. A scroll
+     container can declare that padding here to pull the bar flush with the
+     panel edge like an ordinary pane scrollbar.
+
+     Only set it on a container that carries the zoom itself (as
+     .vscode-chat-history does): this value is resolved inside the zoomed
+     subtree, so it scales with the zoom and stays in step with the padding.
+     On a container whose zoom sits *inside* it, the padding would not scale
+     but this inset would, overshooting and pushing the bar off screen — so
+     such containers leave it at 0 and keep the bar aligned with the content
+     inset instead. */
+  bottom: calc(-1 * var(--chat-sticky-bottom-inset, 0px));
+  z-index: 2;
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 10px;
+  background: var(--vscode-sidebar-bg, #252526);
+  border-top: 1px solid var(--border-color, #3c3c3c);
+  scrollbar-width: thin;
+}
+
+.chat-table-hbar::-webkit-scrollbar {
+  height: 9px;
+}
+.chat-table-hbar::-webkit-scrollbar-thumb {
+  background: rgba(121, 121, 121, 0.7);
+  border-radius: 4px;
+}
+.chat-table-hbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(160, 160, 160, 0.9);
+}
+
+/* ── Chat themed text utility classes (used by formatMessage.jsx) ──────── */
+.chat-text-primary {
+  color: var(--vscode-text-fg);   /* dark theme default */
+}
+.chat-text-secondary {
+  color: var(--vscode-text-fg);
+}
+.chat-inline-code {
+  background: var(--vscode-input-bg);
+  color: #f8f8f2;
+}
+
+/* ── Chat header color classes (dark defaults) ──────────────────────────── */
+.chat-header-user {
+  color: #75beff;
+}
+.chat-header-agent {
+  color: #da70d6;
+}
+
+.vscode-chat-form {
+  position: relative;
+  padding: 12px;
+  border-top: 1px solid var(--vscode-border);
+  background-color: var(--vscode-bg);
+}
+
+/* The composer's `/` completion list, opened above the form like an editor's
+   suggest widget (SlashCommandMenu.jsx). */
+.slash-command-menu {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(100% - 4px);
+  z-index: 40;
+  max-height: min(320px, calc(50 * var(--ui-vh)));
+  overflow-y: auto;
+  background-color: var(--vscode-bg);
+  border: 1px solid var(--vscode-widget-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.slash-command-menu-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+  color: var(--vscode-text-fg);
+}
+
+.slash-command-menu-item.is-selected {
+  background-color: var(--vscode-list-activeSelectionBg);
+  color: var(--vscode-list-activeSelectionFg);
+}
+
+.slash-command-menu-name {
+  font-family: var(--vscode-editor-font-family);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.slash-command-menu-usage {
+  font-family: var(--vscode-editor-font-family);
+  color: var(--vscode-text-muted);
+  white-space: nowrap;
+}
+
+.slash-command-menu-badge {
+  flex: none;
+  padding: 0 5px;
+  border: 1px solid var(--vscode-text-muted);
+  border-radius: 3px;
+  font-size: 0.8em;
+  color: var(--vscode-text-muted);
+  white-space: nowrap;
+}
+
+.slash-command-menu-desc {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--vscode-text-muted);
+  text-align: right;
+}
+
+.slash-command-menu-item.is-selected .slash-command-menu-usage,
+.slash-command-menu-item.is-selected .slash-command-menu-desc {
+  color: var(--vscode-list-activeSelectionDescriptionFg);
+}
+
+.slash-command-menu-status {
+  padding: 6px 10px;
+  color: var(--vscode-text-muted);
+}
+
+.slash-command-menu-hint {
+  margin-top: 4px;
+  padding: 4px 10px 2px;
+  border-top: 1px solid var(--vscode-border);
+  color: var(--vscode-text-subtle);
+  font-size: 11px;
+}
+
+/* The window a `/` command answers in (SlashCommandOutputModal.jsx). */
+.slash-command-output-name {
+  font-family: var(--vscode-editor-font-family);
+}
+
+.slash-command-output-body {
+  flex: 1;
+  min-height: 80px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.slash-command-output-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--vscode-text-muted);
+}
+
+.slash-command-output-error {
+  color: var(--vscode-fg-danger);
+}
+
+/* Chat composer toolbar and effort / heartbeat mode selector */
+.vscode-chat-composer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+  position: relative;
+}
+
+.vscode-chat-mode-selector-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+/* A second selector in the same row opens its menu from the row's left edge
+   rather than its own: anchored to its button, the menu would run past the
+   right edge of a narrow chat. */
+.vscode-chat-composer-toolbar > .vscode-chat-mode-selector-wrap ~ .vscode-chat-mode-selector-wrap,
+.vscode-chat-form.is-compact .vscode-chat-input-row > .vscode-chat-mode-selector-wrap ~ .vscode-chat-mode-selector-wrap {
+  position: static;
+}
+
+.vscode-chat-form.is-compact .vscode-chat-input-row {
+  position: relative;
+}
+
+.vscode-chat-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  background: var(--vscode-badge-background, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--vscode-border, rgba(255, 255, 255, 0.12));
+  border-radius: 12px;
+  color: var(--vscode-text-fg, #cccccc);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  user-select: none;
+}
+
+.vscode-chat-mode-btn:hover:not(:disabled) {
+  background: var(--vscode-list-hoverBackground, rgba(255, 255, 255, 0.12));
+  border-color: var(--vscode-focusBorder, #007acc);
+}
+
+.vscode-chat-mode-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.vscode-chat-mode-btn-label {
+  white-space: nowrap;
+}
+
+.vscode-chat-mode-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 1000;
+  min-width: 250px;
+  background: var(--vscode-menu-background, var(--vscode-sidebar-bg, #252526));
+  border: 1px solid var(--vscode-menu-border, var(--vscode-border, #454545));
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: chatModeFadeIn 0.15s ease-out;
+}
+
+@keyframes chatModeFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.vscode-chat-mode-menu-header {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  color: var(--vscode-descriptionForeground, #888888);
+  padding: 4px 8px 2px 8px;
+}
+
+.vscode-chat-mode-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.12s ease;
+  color: var(--vscode-menu-foreground, var(--vscode-text-fg, #cccccc));
+}
+
+.vscode-chat-mode-menu-item:hover {
+  background: var(--vscode-menu-selectionBackground, #094771);
+  color: var(--vscode-menu-selectionForeground, #ffffff);
+}
+
+.vscode-chat-mode-menu-item.selected {
+  background: var(--vscode-list-activeSelectionBackground, rgba(255, 255, 255, 0.08));
+}
+
+.vscode-chat-mode-menu-item.selected:hover {
+  background: var(--vscode-menu-selectionBackground, #094771);
+}
+
+.vscode-chat-mode-item-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.vscode-chat-mode-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.vscode-chat-mode-item-title {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.vscode-chat-mode-item-desc {
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground, #888888);
+  line-height: 1.2;
+}
+
+.vscode-chat-mode-menu-item:hover .vscode-chat-mode-item-desc {
+  color: var(--vscode-menu-selectionForeground, #eeeeee);
+  opacity: 0.85;
+}
+
+.vscode-chat-mode-item-check {
+  color: var(--vscode-fg-teal, #4ec9b0);
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.vscode-chat-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.vscode-chat-textarea {
+  flex: 1;
+  resize: none;
+  overflow-y: auto;
+  max-height: 200px;
+  min-height: 32px;
+  line-height: 1.5;
+  border-radius: 2px;
+}
+
+/* Status Bar */
+.vscode-statusbar {
+  height: 22px;
+  background-color: var(--vscode-statusbar-bg);
+  color: var(--vscode-statusbar-fg);
+  font-size: 11px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 12px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* Clickable status bar entry (word/character counter). */
+.vscode-statusbar-item {
+  align-items: center;
+  background: none;
+  border: none;
+  border-radius: 2px;
+  color: var(--vscode-statusbar-fg);
+  cursor: pointer;
+  display: flex;
+  font-size: 11px;
+  font-family: inherit;
+  gap: 5px;
+  line-height: 1;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+.vscode-statusbar-item:hover {
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+.vscode-statusbar-item:focus-visible {
+  outline: 1px solid var(--vscode-statusbar-fg);
+  outline-offset: -1px;
+}
+
+.vscode-statusbar-cloud-ad {
+  color: var(--vscode-statusbar-fg);
+  font-weight: 700;
+  left: 50%;
+  max-width: min(220px, calc(32 * var(--ui-vw)));
+  overflow: hidden;
+  padding: 1px 8px;
+  position: absolute;
+  text-decoration: underline;
+  text-overflow: ellipsis;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vscode-statusbar-cloud-ad:hover {
+  background-color: rgba(255, 255, 255, 0.14);
+}
+
+/* Modal */
+/* No backdrop-filter on a full-window overlay, here or inline. Under software
+   compositing (--disable-gpu, the Linux default and Windows' "off" graphics
+   mode) blurring the whole app re-blurs it on every frame anything beneath
+   repaints: measured in QtWebEngine at ~326 ms per frame (p95 650 ms) against
+   ~26 ms without it, which made the directory picker stutter and flicker. */
+.vscode-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* A dialog flush against the window edge reads as a panel that failed to
+     lay out. The gutter is inside the overlay's box, so `max-width: 100%` on
+     the dialog resolves against what is left of the viewport. */
+  padding: var(--space-4);
+  z-index: 100;
+}
+
+.vscode-modal {
+  background-color: var(--vscode-sidebar-bg);
+  border: 1px solid var(--vscode-border);
+  width: 100%;
+  max-width: min(calc(95 * var(--ui-vw)), 100%);
+  max-height: calc(85 * var(--ui-vh));
+  border-radius: var(--radius-lg);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  /* Last-resort scroll: modals that designate an inner scrolling body (a
+     `.vscode-modal-content` or a `<form>`) never overflow here, because that
+     body shrinks and scrolls first. Modals that lay their content out
+     directly (alerts, prompts, small dialogs) would otherwise have anything
+     past `max-height` clipped with no way to reach it, so the dialog itself
+     scrolls instead. Horizontal overflow stays clipped. */
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* A form wrapping the body must behave as the modal's flex column itself,
+   otherwise its intrinsic min-height keeps it from shrinking and the header
+   or footer gets clipped by the modal's overflow.
+   It scrolls on the Y axis so a form that holds the fields directly (with no
+   inner `.vscode-modal-content`) stays reachable once it outgrows the modal.
+   When it does wrap a `.vscode-modal-content`, that child scrolls first and
+   this stays inert. */
+.vscode-modal > form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.vscode-modal-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--modal-band-padding) var(--modal-gutter);
+  border-bottom: 1px solid var(--vscode-border);
+}
+
+/* The dialogs that paint their title bar in the chrome color (settings, asset
+   store, cloud sync/download) used to hand-roll the whole band inline. The
+   modifier keeps that look while the inset stays the shared one. */
+.vscode-modal-header.titlebar {
+  background-color: var(--vscode-titlebar-bg);
+  border-top-left-radius: var(--radius-lg);
+  border-top-right-radius: var(--radius-lg);
+}
+
+.vscode-modal-header h2 {
+  margin: 0;
+  color: var(--vscode-text-fg);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.vscode-modal-header-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--vscode-text-fg);
+}
+
+/* A tab strip is a band of the dialog, so it shares the gutter with the title
+   bar above it and the body below it. */
+.vscode-modal-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-4);
+  padding: 0 var(--modal-gutter);
+  border-bottom: 1px solid var(--vscode-border);
+}
+
+.vscode-modal-tabs.titlebar {
+  background-color: var(--vscode-titlebar-bg);
+}
+
+.vscode-modal-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: var(--space-2) var(--space-1);
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--vscode-text-subtle);
+  cursor: pointer;
+}
+
+.vscode-modal-tab:hover {
+  color: var(--vscode-text-fg);
+}
+
+.vscode-modal-tab.active {
+  font-weight: 700;
+  color: var(--vscode-text-fg);
+  border-bottom-color: var(--vscode-accent);
+}
+
+.vscode-modal-tab:focus-visible {
+  outline: 1px solid var(--vscode-active-border);
+  outline-offset: -2px;
+}
+
+.vscode-modal-content {
+  padding: var(--modal-body-padding) var(--modal-gutter);
+  color: var(--vscode-text-fg);
+}
+
+/* Label-over-control stack used by every dialog form. Without it the `label`
+   stayed inline and sat beside its own input. */
+.vscode-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.vscode-form-group > label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vscode-text-fg);
+}
+
+.vscode-form-group > input,
+.vscode-form-group > select,
+.vscode-form-group > textarea {
+  width: 100%;
+}
+
+/* Reserves room for the longest variant of a swappable hint so switching the
+   option it describes does not resize the modal under the pointer. */
+.vscode-form-hint {
+  display: block;
+  line-height: 1.4;
+  min-height: 3.6em;
+}
+
+/* An inline form nested inside another dialog body (the connection form
+   embedded in the model form) already sits inside that body's gutter; a
+   second one would double the inset. */
+.vscode-modal-content .vscode-modal-content {
+  padding: 0;
+}
+
+/* Only the body scrolls, so the header and footer stay pinned when the
+   content grows past max-height (nested .vscode-modal-content blocks, such as
+   the inline connection form, are intentionally excluded). */
+.vscode-modal > .vscode-modal-content,
+.vscode-modal > form > .vscode-modal-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.vscode-modal-footer {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--modal-band-padding) var(--modal-gutter);
+  border-top: 1px solid var(--vscode-border);
+}
+
+.vscode-modal-footer.titlebar {
+  background-color: var(--vscode-titlebar-bg);
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
+}
+
+/* Skills Store */
+.skills-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.skill-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--vscode-border);
+  border-radius: 6px;
+  background-color: var(--vscode-sidebar-bg);
+}
+
+.skill-card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  object-fit: cover;
+  background-color: var(--vscode-bg);
+}
+
+.skill-card-icon-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vscode-text-subtle);
+}
+
+.skill-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.skill-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vscode-text-fg);
+}
+
+.skill-card-desc {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--vscode-descriptionForeground);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.skill-card-note {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--vscode-text-subtle);
+  font-style: italic;
+}
+
+.skill-card-action {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+/* ── Utility layer (no-Tailwind equivalents) ──────────────────────────────
+   Components across the app are written in Tailwind's class vocabulary, but
+   Tailwind is not a dependency and never was: only the layout handful below
+   had ever been given a rule, so every `p-4`, `px-4`, `gap-2` and
+   `animate-spin` in the JSX resolved to nothing. The result was invisible in
+   review and obvious on screen — dialog labels, inputs and tab strips flush
+   against the frame, spinners that did not spin, a compile-error card with no
+   padding or corner radius at all.
+
+   The layer therefore covers every utility the codebase actually writes, and
+   `src/utils/__tests__/spacingUtilities.test.js` fails if a component adds one
+   that has no rule here. Spacing follows Tailwind's 4px step so the class
+   names mean what they look like; the type scale is the *app's* (11px floor,
+   13px body — see §2.16), not Tailwind's rem ladder, because these classes
+   have to sit next to the interface scale without fighting it. */
+
+/* Layout */
+.flex { display: flex; }
+.flex-1 { flex: 1; }
+.flex-col { flex-direction: column; }
+.flex-shrink-0, .shrink-0 { flex-shrink: 0; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.justify-end { justify-content: flex-end; }
+.relative { position: relative; }
+.h-full { height: 100%; }
+.w-full { width: 100%; }
+.w-fit { width: fit-content; }
+.max-w-3xl { max-width: 768px; }
+.max-h-64 { max-height: 256px; }
+.overflow-hidden { overflow: hidden; }
+.overflow-y-auto { overflow-y: auto; }
+.overflow-x-auto { overflow-x: auto; }
+
+/* Spacing */
+.p-0 { padding: 0; }
+.p-0\.5 { padding: 2px; }
+.p-1 { padding: var(--space-1); }
+.p-1\.5 { padding: 6px; }
+.p-2 { padding: var(--space-2); }
+.p-3 { padding: var(--space-3); }
+.p-4 { padding: var(--space-4); }
+.p-5 { padding: var(--space-5); }
+.p-6 { padding: var(--space-6); }
+.p-8 { padding: var(--space-8); }
+
+.px-0 { padding-left: 0; padding-right: 0; }
+.px-0\.5 { padding-left: 2px; padding-right: 2px; }
+.px-1 { padding-left: var(--space-1); padding-right: var(--space-1); }
+.px-1\.5 { padding-left: 6px; padding-right: 6px; }
+.px-2 { padding-left: var(--space-2); padding-right: var(--space-2); }
+.px-3 { padding-left: var(--space-3); padding-right: var(--space-3); }
+.px-4 { padding-left: var(--space-4); padding-right: var(--space-4); }
+.px-5 { padding-left: var(--space-5); padding-right: var(--space-5); }
+.px-6 { padding-left: var(--space-6); padding-right: var(--space-6); }
+.px-8 { padding-left: var(--space-8); padding-right: var(--space-8); }
+
+.py-0 { padding-top: 0; padding-bottom: 0; }
+.py-0\.5 { padding-top: 2px; padding-bottom: 2px; }
+.py-1 { padding-top: var(--space-1); padding-bottom: var(--space-1); }
+.py-1\.5 { padding-top: 6px; padding-bottom: 6px; }
+.py-2 { padding-top: var(--space-2); padding-bottom: var(--space-2); }
+.py-3 { padding-top: var(--space-3); padding-bottom: var(--space-3); }
+.py-4 { padding-top: var(--space-4); padding-bottom: var(--space-4); }
+.py-5 { padding-top: var(--space-5); padding-bottom: var(--space-5); }
+.py-6 { padding-top: var(--space-6); padding-bottom: var(--space-6); }
+.py-8 { padding-top: var(--space-8); padding-bottom: var(--space-8); }
+
+.mt-0 { margin-top: 0; }
+.mt-0\.5 { margin-top: 2px; }
+.mt-1 { margin-top: var(--space-1); }
+.mt-1\.5 { margin-top: 6px; }
+.mt-2 { margin-top: var(--space-2); }
+.mt-3 { margin-top: var(--space-3); }
+.mt-4 { margin-top: var(--space-4); }
+.mt-5 { margin-top: var(--space-5); }
+.mt-6 { margin-top: var(--space-6); }
+.mt-8 { margin-top: var(--space-8); }
+
+.mb-0 { margin-bottom: 0; }
+.mb-0\.5 { margin-bottom: 2px; }
+.mb-1 { margin-bottom: var(--space-1); }
+.mb-1\.5 { margin-bottom: 6px; }
+.mb-2 { margin-bottom: var(--space-2); }
+.mb-3 { margin-bottom: var(--space-3); }
+.mb-4 { margin-bottom: var(--space-4); }
+.mb-5 { margin-bottom: var(--space-5); }
+.mb-6 { margin-bottom: var(--space-6); }
+.mb-8 { margin-bottom: var(--space-8); }
+
+.gap-0 { gap: 0; }
+.gap-0\.5 { gap: 2px; }
+.gap-1 { gap: var(--space-1); }
+.gap-1\.5 { gap: 6px; }
+.gap-2 { gap: var(--space-2); }
+.gap-3 { gap: var(--space-3); }
+.gap-4 { gap: var(--space-4); }
+.gap-5 { gap: var(--space-5); }
+.gap-6 { gap: var(--space-6); }
+.gap-8 { gap: var(--space-8); }
+
+/* `space-y-*` spaces siblings without giving the first one a leading margin. */
+.space-y-3 > * + * { margin-top: var(--space-3); }
+
+/* Type */
+.text-xs { font-size: 11px; }
+.text-sm { font-size: 12px; }
+.text-\[13px\] { font-size: 13px; }
+.text-xl { font-size: 18px; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-mono { font-family: var(--vscode-editor-font-family); }
+.text-center { text-align: center; }
+.text-white { color: #ffffff; }
+.uppercase { text-transform: uppercase; }
+.tracking-wider { letter-spacing: 0.05em; }
+.leading-relaxed { line-height: 1.6; }
+.truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.break-words { overflow-wrap: break-word; }
+.whitespace-pre-wrap { white-space: pre-wrap; }
+
+/* Shape and surface. Border colors resolve to theme tokens rather than
+   Tailwind's palette, so a bordered element stays readable in both themes. */
+.rounded-md { border-radius: var(--radius-md); }
+.rounded-lg { border-radius: var(--radius-lg); }
+.rounded-xl { border-radius: 12px; }
+.rounded-full { border-radius: 9999px; }
+.border { border: 1px solid var(--vscode-border); }
+.border-b { border-bottom: 1px solid var(--vscode-border); }
+.border-red-500\/30 { border-color: color-mix(in srgb, var(--vscode-errorForeground) 30%, transparent); }
+.bg-white { background-color: #ffffff; }
+.shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); }
+.shadow-inner { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25); }
+
+/* Interaction */
+.cursor-pointer { cursor: pointer; }
+.cursor-text { cursor: text; }
+.transition-colors { transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease; }
+.transition-transform { transition: transform 0.15s ease; }
+
+/* `.group` marks the ancestor a variant reads state from; here, the only
+   variant in use is a disclosure arrow that turns when its <details> opens. */
+.group[open] .group-open\:rotate-90 { transform: rotate(90deg); }
+
+@keyframes vscode-spin { to { transform: rotate(360deg); } }
+.animate-spin { animation: vscode-spin 1s linear infinite; }
+
+/* Resizer split drag lines */
+.vscode-resizer-horizontal {
+  width: 4px;
+  background-color: var(--vscode-sidebar-bg);
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease;
+  z-index: 10;
+  border-left: 1px solid var(--vscode-border);
+  border-right: 1px solid var(--vscode-border);
+}
+
+.vscode-resizer-horizontal:hover,
+.vscode-resizer-horizontal:active {
+  background-color: var(--vscode-active-border);
+  border-left-color: var(--vscode-active-border);
+  border-right-color: var(--vscode-active-border);
+}
+
+.vscode-resizer-vertical {
+  height: 4px;
+  background-color: var(--vscode-sidebar-bg);
+  cursor: row-resize;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease;
+  z-index: 10;
+  border-top: 1px solid var(--vscode-border);
+  border-bottom: 1px solid var(--vscode-border);
+}
+
+.vscode-resizer-vertical:hover,
+.vscode-resizer-vertical:active {
+  background-color: var(--vscode-active-border);
+  border-top-color: var(--vscode-active-border);
+  border-bottom-color: var(--vscode-active-border);
+}
+
+/* Custom Context Menu */
+.vscode-context-menu {
+  position: fixed;
+  background-color: var(--vscode-sidebar-bg);
+  border: 1px solid var(--vscode-border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  border-radius: 4px;
+  padding: 4px 0;
+  z-index: 1000;
+  min-width: 150px;
+}
+
+.vscode-context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--vscode-text-fg);
+  cursor: pointer;
+  user-select: none;
+}
+
+.vscode-context-menu-item:hover {
+  background-color: var(--vscode-button-bg);
+  color: #ffffff;
+}
+
+.vscode-context-menu-item-disabled,
+.light-theme .vscode-context-menu-item-disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.vscode-context-menu-item-disabled:hover,
+.light-theme .vscode-context-menu-item-disabled:hover {
+  background-color: transparent;
+  color: inherit;
+}
+
+.vscode-context-menu-separator {
+  height: 1px;
+  margin: 4px 8px;
+  background-color: var(--vscode-border);
+}
+
+/* PDF annotation controls */
+.pdf-annotation-swatches {
+  display: flex;
+  gap: 6px;
+  padding: 2px 12px 6px 33px;
+}
+
+.pdf-annotation-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  padding: 0;
+  cursor: pointer;
+}
+
+.pdf-annotation-swatch:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.pdf-annotation-swatch-active {
+  outline: 2px solid var(--vscode-button-bg);
+  outline-offset: 1px;
+}
+
+/* Marker showing which marks carry a note. Small and parked at the end of the
+   mark's first line so it never blocks selecting the text underneath.
+
+   Deliberately theme-independent: the PDF page is always white (see
+   .pdf-page-wrapper), so anything drawn on top of it belongs to the page's visual
+   world, not the editor's. Painting this with the app's surface tokens put a black
+   disc on white paper in dark mode. Chrome that floats above the page — the
+   tooltip, the note editor — does follow the theme, because it belongs to the app. */
+.pdf-annotation-note-marker {
+  position: absolute;
+  transform: translate(2px, -50%);
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  border-radius: 50%;
+  border: 1.5px solid;
+  background-color: #ffffff;
+  color: #3f3f46;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 7;
+}
+
+.pdf-annotation-note-marker:hover {
+  transform: translate(2px, -50%) scale(1.15);
+}
+
+/* A marker the user has dragged is centred on the point it was dropped at,
+   rather than hanging off the end of the mark it belongs to. */
+.pdf-annotation-note-marker-placed {
+  transform: translate(-50%, -50%);
+}
+
+.pdf-annotation-note-marker-placed:hover {
+  transform: translate(-50%, -50%) scale(1.15);
+}
+
+.pdf-annotation-note-marker-dragging,
+.pdf-annotation-note-marker-dragging:hover {
+  transform: translate(-50%, -50%) scale(1.2);
+  cursor: grabbing;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.55);
+}
+
+.pdf-annotation-tooltip {
+  position: fixed;
+  z-index: 1200;
+  max-width: 280px;
+  padding: 6px 9px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-border);
+  background-color: var(--vscode-sidebar-bg);
+  color: var(--vscode-text-fg);
+  font-size: 11px;
+  line-height: 1.45;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.pdf-annotation-tooltip-author {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  margin-bottom: 3px;
+}
+
+.pdf-annotation-error {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(560px, calc(100% - 24px));
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-errorForeground);
+  background-color: var(--vscode-sidebar-bg);
+  color: var(--vscode-errorForeground);
+  font-size: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.pdf-annotation-error button {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  padding: 0;
+}
+
+/* PDF annotation note editor */
+.pdf-note-popup {
+  position: fixed;
+  z-index: 1100;
+  width: 280px;
+  max-width: calc(100 * var(--ui-vw) - 24px);
+  background-color: var(--vscode-sidebar-bg);
+  border: 1px solid var(--vscode-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  padding: 8px;
+}
+
+.pdf-note-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--vscode-text-fg);
+  margin-bottom: 6px;
+}
+
+.pdf-note-popup-header button {
+  background: transparent;
+  border: none;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  display: flex;
+  padding: 0;
+}
+
+.pdf-note-popup-input {
+  width: 100%;
+  resize: vertical;
+  font-size: 12px;
+  font-family: inherit;
+  padding: 6px;
+  border-radius: 3px;
+  border: 1px solid var(--vscode-border);
+  background-color: var(--vscode-input-bg);
+  color: var(--vscode-text-fg);
+}
+
+.pdf-note-popup-error {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--vscode-errorForeground);
+}
+
+.pdf-note-popup-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.pdf-note-popup-hint {
+  flex: 1;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.pdf-note-popup-actions button {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 1px solid var(--vscode-border);
+  background-color: var(--vscode-input-bg);
+  color: var(--vscode-text-fg);
+}
+
+.pdf-note-popup-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.pdf-note-popup-save {
+  background-color: var(--vscode-button-bg) !important;
+  border-color: var(--vscode-button-bg) !important;
+  color: #ffffff !important;
+}
+
+/* Snippet translation popup — shared by the PDF viewer and the Markdown preview */
+.snippet-translate-popup {
+  position: fixed;
+  z-index: 1100;
+  width: 380px;
+  max-width: calc(100 * var(--ui-vw) - 24px);
+  display: flex;
+  flex-direction: column;
+  background-color: var(--vscode-sidebar-bg);
+  color: var(--vscode-text-fg);
+  border: 1px solid var(--vscode-border);
+  border-radius: 6px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.light-theme .snippet-translate-popup {
+  background-color: #ffffff;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2);
+}
+
+.snippet-translate-popup-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  background-color: var(--vscode-titlebar-bg);
+  border-bottom: 1px solid var(--vscode-border);
+  /* The header doubles as the drag handle for the whole popup. */
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.snippet-translate-popup-header.is-dragging {
+  cursor: grabbing;
+}
+
+/* While dragging, the pointer regularly leaves the header: nothing under it
+   should highlight or start a selection. */
+.snippet-translate-popup.is-dragging {
+  user-select: none;
+}
+
+.snippet-translate-popup-header button {
+  cursor: pointer;
+}
+
+.snippet-translate-popup-header-spacer {
+  flex: 1;
+}
+
+.snippet-translate-popup-zoom-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  border-radius: 3px;
+}
+
+.snippet-translate-popup-zoom-btn:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--vscode-text-fg) 14%, transparent);
+}
+
+.snippet-translate-popup-zoom-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.snippet-translate-popup-zoom-level {
+  font-size: 11px;
+  font-weight: 400;
+  min-width: 34px;
+  text-align: center;
+  color: var(--vscode-descriptionForeground, #888);
+  font-variant-numeric: tabular-nums;
+}
+
+.snippet-translate-popup-close {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+}
+
+.snippet-translate-popup-body {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: calc(46 * var(--ui-vh));
+  overflow-y: auto;
+}
+
+.snippet-translate-popup-speak {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  margin-left: 6px;
+  vertical-align: middle;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  color: var(--vscode-fg-link);
+  cursor: pointer;
+}
+
+.snippet-translate-popup-speak:hover {
+  background-color: var(--vscode-list-hover-bg);
+}
+
+.snippet-translate-popup-label {
+  font-size: calc(10px * var(--snippet-translate-text-scale, 1));
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--vscode-descriptionForeground, #888);
+}
+
+.snippet-translate-popup-source {
+  font-size: calc(11px * var(--snippet-translate-text-scale, 1));
+  line-height: 1.45;
+  white-space: pre-wrap;
+  color: var(--vscode-descriptionForeground, #888);
+  max-height: calc(90px * var(--snippet-translate-text-scale, 1));
+  overflow-y: auto;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background-color: var(--vscode-bg);
+  border: 1px solid var(--vscode-border);
+}
+
+.snippet-translate-popup-result {
+  font-size: calc(12.5px * var(--snippet-translate-text-scale, 1));
+  line-height: 1.5;
+  white-space: pre-wrap;
+  user-select: text;
+}
+
+.snippet-translate-popup-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground, #888);
+}
+
+.snippet-translate-popup-error {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--vscode-errorForeground, #f48771);
+}
+
+.snippet-translate-popup-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--vscode-border);
+}
+
+/* "Look up" (§2.13.4) reuses the translation popup's frame; an answer is
+   usually longer than a translation, so the card is wider and taller. */
+.snippet-query-popup {
+  width: 460px;
+}
+
+.snippet-query-body {
+  max-height: calc(62 * var(--ui-vh));
+}
+
+.snippet-query-source {
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.snippet-query-question-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 64px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: calc(12.5px * var(--snippet-translate-text-scale, 1));
+  line-height: 1.45;
+  color: var(--vscode-input-fg);
+  background-color: var(--vscode-input-bg);
+  border: 1px solid var(--vscode-input-border, var(--vscode-border));
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.snippet-query-question-input:focus {
+  outline: 1px solid var(--vscode-focus);
+  outline-offset: -1px;
+}
+
+.snippet-query-hint,
+.snippet-query-files {
+  font-size: 11px;
+  color: var(--vscode-text-muted);
+}
+
+.snippet-query-question {
+  font-size: calc(12px * var(--snippet-translate-text-scale, 1));
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.snippet-query-answer {
+  font-size: calc(12.5px * var(--snippet-translate-text-scale, 1));
+  line-height: 1.5;
+  user-select: text;
+  overflow-wrap: anywhere;
+}
+
+.snippet-query-warning {
+  font-size: 11.5px;
+  color: var(--vscode-fg-warning);
+}
+
+.snippet-query-saved {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--vscode-fg-success);
+}
+
+.snippet-query-footer {
+  flex-wrap: wrap;
+}
+
+.snippet-query-footer-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+}
+
+.snippet-query-footer-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Dictation: the composer's microphone. Recording is a state the user must be
+   able to see at a glance, because the alternative is a hot microphone nobody
+   noticed. */
+.vscode-chat-mic-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  background: transparent;
+  border: none;
+  color: #666;
+  cursor: pointer;
+}
+
+.vscode-chat-mic-btn:hover:not(:disabled) { color: var(--vscode-text-fg); }
+.vscode-chat-mic-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.vscode-chat-mic-btn.is-recording {
+  color: var(--vscode-errorForeground, #f48771);
+  animation: chat-mic-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes chat-mic-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* Respect a reduced-motion preference: the colour alone still reports the
+   state, so the pulse is decoration rather than information. */
+@media (prefers-reduced-motion: reduce) {
+  .vscode-chat-mic-btn.is-recording { animation: none; }
+}
+
+.vscode-chat-dictation-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 8px 4px 8px;
+  padding: 5px 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  border-radius: 4px;
+  color: var(--vscode-errorForeground, #f48771);
+  background-color: rgba(244, 135, 113, 0.1);
+}
+
+.vscode-chat-dictation-error span { flex: 1; min-width: 0; }
+
+.vscode-chat-dictation-error button {
+  display: flex;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 2px;
+}
+
+/* Local voice manager (Settings > General > Pronunciation). A voice is a real
+   63 MB download, so the list states the size before the user commits and
+   reports progress while it runs. */
+.speech-voice-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 210px;
+  overflow-y: auto;
+  border: 1px solid var(--vscode-border);
+  border-radius: 4px;
+}
+
+.speech-voice-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--vscode-border);
+}
+
+.speech-voice-row:last-child { border-bottom: none; }
+.speech-voice-row.is-selected { background-color: var(--vscode-list-active-bg, rgba(124, 108, 242, 0.18)); }
+
+.speech-voice-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.speech-voice-name {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: var(--vscode-text-fg);
+  min-width: 0;
+}
+
+.speech-voice-lang {
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.speech-voice-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  background: none;
+  border: 1px solid var(--vscode-border);
+  border-radius: 3px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.speech-voice-btn:hover:not(:disabled) { background-color: var(--vscode-list-hover-bg); }
+.speech-voice-btn:disabled { opacity: 0.5; cursor: default; }
+
+.speech-voice-progress {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--vscode-descriptionForeground);
+}
+
+.speech-voice-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 8px;
+  font-size: 11px;
+  line-height: 1.45;
+  border-radius: 4px;
+  color: var(--vscode-errorForeground, #f48771);
+  background-color: rgba(244, 135, 113, 0.1);
+}
+
+/* Snippet pronunciation player. Deliberately a single row: it carries a
+   transport, not a document, and it sits over the text the user is reading. */
+.snippet-speech-popup {
+  position: fixed;
+  z-index: 1100;
+  max-width: min(420px, calc(100 * var(--ui-vw) - 24px));
+  display: flex;
+  flex-direction: column;
+  background-color: var(--vscode-sidebar-bg);
+  color: var(--vscode-text-fg);
+  border: 1px solid var(--vscode-border);
+  border-radius: 6px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.light-theme .snippet-speech-popup {
+  background-color: #ffffff;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2);
+}
+
+.snippet-speech-popup-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+}
+
+.snippet-speech-popup-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--vscode-descriptionForeground);
+}
+
+/* The excerpt is context for the transport, not the content: one line, elided,
+   so the player never grows into a second reading surface. */
+.snippet-speech-popup-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.snippet-speech-popup-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.snippet-speech-popup-btn:hover {
+  background-color: var(--vscode-list-hover-bg);
+}
+
+.snippet-speech-popup-error {
+  padding: 0 8px 8px 8px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--vscode-errorForeground, #f48771);
+}
+
+/* ── Agent request windows ────────────────────────────────────────────────
+   Floating windows, deliberately not modals: answering an agent request can
+   require consulting the workbench, so there is no
+   `.vscode-modal-overlay` behind it and nothing here may capture a pointer
+   event meant for the editor, the explorer or the chat. Position and size come
+   from inline styles (utils/floatingWindow.js owns the geometry); this file
+   only paints it. Its z-index sits above the panels and below the modals — a
+   real modal still has to be answered first. */
+.plan-window {
+  position: fixed;
+  /* The same layer as `.vscode-modal-overlay` and as react-split's gutters, so
+     paint order against both is decided by DOM order — which App.jsx fixes by
+     rendering this at the head of the overlay group: above the workbench and
+     its gutters, below every modal. A modal raised while a plan is pending is
+     a genuine interruption and still has to be answered first. */
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--vscode-sidebar-bg);
+  color: var(--vscode-text-fg);
+  border: 1px solid var(--vscode-border);
+  border-radius: var(--radius-lg, 6px);
+  /* A heavier shadow than a docked panel gets: with no backdrop dimming the
+     IDE, the elevation is the only cue that this floats above it. */
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.light-theme .plan-window {
+  background-color: #ffffff;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+}
+
+.plan-window-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background-color: var(--vscode-titlebar-bg);
+  border-bottom: 1px solid var(--vscode-border);
+  /* The header doubles as the drag handle for the whole window. */
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.plan-window.is-collapsed .plan-window-header {
+  border-bottom: none;
+}
+
+.plan-window.is-gesturing .plan-window-header {
+  cursor: grabbing;
+}
+
+/* While a drag or resize is in flight the pointer regularly leaves the window:
+   nothing under it should highlight or start a text selection. */
+.plan-window.is-gesturing,
+.plan-window.is-gesturing * {
+  user-select: none;
+}
+
+.plan-window-title {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.plan-window-waiting {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--vscode-description-fg, #9aa0a6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The agent is parked on a future until this is answered, and with the IDE
+   live behind the window that is easy to forget. The pulse says the wait is
+   still running rather than finished. */
+.plan-window-waiting-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background-color: #d29922;
+  animation: plan-window-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes plan-window-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-window-waiting-dot { animation: none; }
+}
+
+.plan-window-header-spacer {
+  flex: 1;
+  min-width: 0;
+}
+
+.plan-window-header-btn {
+  flex: none;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--vscode-text-fg);
+  background: transparent;
+  border: 1px solid var(--vscode-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.plan-window-header-btn:hover {
+  background-color: var(--vscode-hover-bg, rgba(128, 128, 128, 0.15));
+}
+
+.plan-window-header-btn[aria-pressed="true"] {
+  color: var(--vscode-button-fg);
+  background-color: var(--vscode-button-bg);
+  border-color: var(--vscode-button-bg);
+}
+
+.plan-window-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 5px;
+}
+
+.plan-window-prompt {
+  margin: 0;
+  padding: 12px 16px 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--vscode-text-fg);
+}
+
+.plan-window-body {
+  flex: 1;
+  min-height: 0;
+  margin: 0 16px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  font-size: 13px;
+  color: var(--vscode-text-fg);
+  background-color: var(--vscode-editor-bg);
+  border: 1px solid var(--vscode-border);
+  border-radius: 4px;
+  padding: 14px;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.plan-window-body.is-editing {
+  padding: 0;
+}
+
+/* The plan is rendered at 13px in a window sized to leave the IDE visible, so
+   the browser's default heading scale (2em for an h1) would spend a third of
+   the visible plan on one line. */
+.plan-window-body h1,
+.plan-window-body h2,
+.plan-window-body h3,
+.plan-window-body h4 {
+  margin: 14px 0 6px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.plan-window-body h1 { font-size: 15px; }
+.plan-window-body h2 { font-size: 14px; }
+.plan-window-body h3,
+.plan-window-body h4 { font-size: 13px; }
+
+.plan-window-body > :first-child {
+  margin-top: 0;
+}
+
+.plan-window-body ul,
+.plan-window-body ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.plan-window-editor {
+  flex: 1;
+  width: 100%;
+  padding: 14px;
+  background: transparent;
+  color: var(--vscode-text-fg);
+  border: none;
+  outline: none;
+  resize: none;
+  font-size: 13px;
+  font-family: var(--vscode-editor-font, monospace);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.plan-window-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 12px 16px;
+  /* Room for the resize grip, which sits in the same corner. */
+  padding-right: 22px;
+}
+
+.plan-window-reject {
+  background: transparent;
+  border: 1px solid var(--vscode-border);
+  color: var(--vscode-text-fg);
+}
+
+.plan-window-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background:
+    linear-gradient(135deg, transparent 0 50%, var(--vscode-border) 50% 60%, transparent 60% 72%,
+      var(--vscode-border) 72% 82%, transparent 82%);
+}
+
+/* Ask questions use the same window chrome and elevation as plan review, with
+   compact form controls inside the shared shell. */
+.ask-window-form {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.ask-window-prompt {
+  padding-bottom: 12px;
+}
+
+.ask-window-body {
+  flex: 1;
+  min-height: 0;
+  margin: 0 16px;
+  overflow-y: auto;
+}
+
+.ask-window-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ask-window-options legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vscode-descriptionForeground);
+}
+
+.ask-window-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--vscode-border);
+  border-radius: 6px;
+  background: var(--vscode-input-bg, #2d2d2d);
+  color: var(--vscode-text-fg);
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.ask-window-option:hover {
+  background: var(--vscode-hover-bg, rgba(128, 128, 128, 0.15));
+}
+
+.ask-window-option.is-selected {
+  border-color: var(--vscode-active-border, #007acc);
+  background: var(--vscode-list-activeSelectionBg, #094771);
+  color: var(--vscode-list-activeSelectionFg, #ffffff);
+}
+
+.ask-window-option input {
+  flex: none;
+  margin: 0;
+  accent-color: var(--vscode-button-bg, #0e639c);
+}
+
+.ask-window-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 64px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--vscode-input-border, var(--vscode-border));
+  border-radius: 6px;
+  outline: none;
+  resize: vertical;
+  background: var(--vscode-input-bg, #2d2d2d);
+  color: var(--vscode-input-fg, var(--vscode-text-fg));
+  font: inherit;
+  font-size: 13px;
+}
+
+.ask-window-input:focus {
+  border-color: var(--vscode-focusBorder, #007acc);
+}
+
+.ask-window-footer button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.vscode-overflow-menu-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.vscode-overflow-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 3000;
+  min-width: 210px;
+  padding: 4px 0;
+  background-color: var(--vscode-sidebar-bg);
+  border: 1px solid var(--vscode-border);
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.vscode-overflow-menu-item {
+  width: 100%;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: var(--vscode-text-fg);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.vscode-overflow-menu-item:hover:not(:disabled) {
+  background-color: var(--vscode-hover-item);
+  color: var(--vscode-text-light);
+}
+
+.vscode-overflow-menu-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Thinking Indicator Animation */
+.thinking-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.thinking-indicator .dot {
+  width: 6px;
+  height: 6px;
+  background-color: #da70d6;
+  border-radius: 50%;
+  display: inline-block;
+  animation: pulse 1.4s infinite ease-in-out both;
+}
+
+.thinking-indicator .dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.thinking-indicator .dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes pulse {
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.3;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Clear Button & UI Selection Restrictions */
+.vscode-bottom-panel-clear-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #a0a0a0;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  transition: all 0.1s ease;
+}
+
+.vscode-bottom-panel-clear-btn:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.latex-help-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.latex-help-modal {
+  width: min(420px, calc(100 * var(--ui-vw) - 36px));
+  max-height: calc(100 * var(--ui-vh) - 72px);
+  overflow-y: auto;
+  background: var(--vscode-sidebar-bg);
+  border: 1px solid var(--vscode-border);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  color: var(--vscode-text-fg);
+  padding: 12px;
+  user-select: text;
+}
+
+.latex-help-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.latex-help-section-title {
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  font-weight: 700;
+  margin: 10px 0 6px;
+  text-transform: uppercase;
+}
+
+.latex-help-list {
+  display: grid;
+  gap: 5px;
+}
+
+.latex-help-list div {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.latex-help-list dt {
+  color: var(--vscode-textPreformat-foreground);
+  font-family: "Fira Code", "Courier New", Courier, monospace;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.latex-help-list dd,
+.latex-help-feature-list {
+  color: var(--vscode-text-fg);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.latex-help-feature-list {
+  margin-left: 15px;
+}
+
+.latex-help-feature-list li {
+  margin: 4px 0;
+}
+
+.select-none {
+  user-select: none;
+}
+
+.pdf-preview-controls {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 80;
+  max-width: calc(100% - 32px);
+  padding: 6px;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.pdf-preview-scroll {
+  gap: 18px;
+  padding-top: 32px;
+  padding-bottom: 32px;
+}
+
+/* ── PDF presentation mode (PdfPresentMode.jsx) ───────────────────────────── */
+.pdf-present {
+  position: fixed;
+  left: 0;
+  top: 0;
+  /* Not `inset: 0`: a fixed element's viewport-relative size resolves against
+     the real viewport and is then multiplied by the app's zoom, overflowing
+     the screen by exactly uiScale. --ui-vw/--ui-vh are zoom-corrected. */
+  width: calc(100 * var(--ui-vw, 1vw));
+  height: calc(100 * var(--ui-vh, 1vh));
+  z-index: 9999;
+  overflow: hidden;
+  background: #000;
+  outline: none;
+  cursor: default;
+  user-select: none;
+}
+
+.pdf-present-document {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* The current page and its hidden neighbours share one grid cell, so each is
+   centred on its own size and advancing never shifts the layout. */
+.pdf-present-page {
+  grid-area: 1 / 1;
+}
+
+.pdf-present-status {
+  grid-area: 1 / 1;
+  color: #6f6f6f;
+  font: 13px system-ui, sans-serif;
+}
+
+.pdf-present-hud {
+  /* Absolute inside the overlay, not fixed: a fixed offset would be measured
+     from the unzoomed viewport and drift off the corner as the zoom changes. */
+  position: absolute;
+  right: 18px;
+  bottom: 14px;
+  color: #6f6f6f;
+  font: 12px system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* The pages must NOT be centered by the scrolling container itself.
+   With `align-items: center`, a page wider than the viewport (zoom in)
+   overflows equally on both sides, and the scrollable overflow region only
+   ever extends toward the end edge — so the left part of the page is clipped
+   and unreachable (scrollLeft can never go negative).
+   Instead the container aligns the stack to the start, and this stack is
+   `min-width: 100%` (centers the pages while they still fit) plus
+   `width: max-content` (grows to the widest page when zoomed, so the whole
+   page lives inside the scrollable area). */
+.pdf-doc-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 100%;
+  width: max-content;
+}
+
+.pdf-page-divider {
+  width: min(92%, 900px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.pdf-page-divider::before,
+.pdf-page-divider::after {
+  content: '';
+  height: 1px;
+  flex: 1 1 auto;
+  background: var(--vscode-border);
+}
+
+.pdf-page-divider span {
+  max-width: min(220px, calc(48 * var(--ui-vw)));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* On the light canvas --vscode-border (var(--vscode-border)) nearly vanishes, so the
+   divider rules and label get their own higher-contrast light values. */
+.light-theme .pdf-page-divider {
+  color: #5a5a60;
+}
+
+.light-theme .pdf-page-divider::before,
+.light-theme .pdf-page-divider::after {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.pdf-preview-compile-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    linear-gradient(135deg, rgba(124, 108, 242, 0.16), rgba(0, 0, 0, 0.12)),
+    var(--vscode-editorOverlay);
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+
+.pdf-preview-compile-panel {
+  width: min(320px, calc(100 * var(--ui-vw) - 48px));
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 14px;
+  row-gap: 12px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--vscode-active-border) 45%, var(--vscode-border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--vscode-sidebar-bg) 92%, transparent);
+  color: var(--vscode-text-fg);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.42);
+}
+
+.pdf-preview-compile-orbit {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, var(--vscode-sidebar-bg) 42%, transparent 44%),
+    conic-gradient(from 0deg, transparent, var(--vscode-active-border), #73c991, transparent 78%);
+  animation: pdfCompileSpin 1.15s linear infinite;
+}
+
+.pdf-preview-compile-page {
+  position: absolute;
+  inset: 13px 15px;
+  border-radius: 3px 3px 5px 5px;
+  background: var(--vscode-text-fg);
+  box-shadow: inset -5px -5px 0 color-mix(in srgb, var(--vscode-active-border) 35%, transparent);
+}
+
+.pdf-preview-compile-page::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  background: var(--vscode-active-border);
+  box-shadow: 0 5px 0 var(--vscode-active-border), 0 10px 0 var(--vscode-active-border);
+  opacity: 0.75;
+}
+
+.pdf-preview-compile-text {
+  min-width: 0;
+}
+
+.pdf-preview-compile-title {
+  margin: 0 0 3px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pdf-preview-compile-subtitle {
+  margin: 0;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.pdf-preview-compile-progress {
+  grid-column: 1 / -1;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vscode-active-border) 16%, var(--vscode-input-bg));
+}
+
+.pdf-preview-compile-progress span {
+  display: block;
+  width: 42%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--vscode-active-border), #73c991);
+  animation: pdfCompileProgress 1.35s ease-in-out infinite;
+}
+
+@keyframes pdfCompileSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pdfCompileProgress {
+  0% {
+    transform: translateX(-105%);
+  }
+  50% {
+    transform: translateX(75%);
+  }
+  100% {
+    transform: translateX(245%);
+  }
+}
+
+/* Protect UI chrome from text selection */
+.vscode-activitybar,
+.vscode-sidebar-header,
+.vscode-sidebar-section-title,
+.vscode-tabs,
+.vscode-bottom-tabs,
+.vscode-chat-header,
+.vscode-chat-toolbar,
+.vscode-statusbar,
+.vscode-button,
+.vscode-context-menu,
+.vscode-tree-node,
+.vscode-tab {
+  user-select: none;
+}
+
+/* Enable selection in chat messages */
+.vscode-chat-history,
+.vscode-chat-msg-content,
+.vscode-chat-msg-header {
+  user-select: text !important;
+}
+
+/* Inline Prompt Overlay animation */
+@keyframes inlineOverlayFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+
+
+
+
+/* Settings Modal Input overrides to prevent native OS white backgrounds */
+.vscode-settings-input {
+  background-color: var(--vscode-input-bg) !important;
+  color: var(--vscode-text-fg) !important;
+  border: 1px solid var(--vscode-border) !important;
+  padding: 6px 8px;
+  outline: none;
+}
+.vscode-settings-input:focus {
+  border-color: var(--vscode-active-border) !important;
+}
+
+/* Force native styles off for inputs to ensure theme compliance on Linux GTK */
+select.vscode-settings-input,
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%23cccccc%22%20d%3D%22M2%204l4%204%204-4z%22%2F%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 24px;
+}
+
+.msg-action-btn:hover {
+  background-color: var(--vscode-hover-item);
+  color: var(--vscode-text-light) !important;
+}
+
+/* ── Markdown Preview Performance ─────────────────────────────────────────
+   Hardware acceleration for CSS transform-based zoom */
+.markdown-preview-container > div[style*="transform"] {
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+@media print {
+  html, body, #root, .vscode-app, .vscode-main, .vscode-editor-panel, .vscode-editor-container, .vscode-chat, .vscode-chat-history, .markdown-preview-container {
+    height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  /* A printed document never carries the screen's magnification: not the
+     interface scale (`.vscode-app` zoom), not the Markdown preview's own zoom
+     (FormattedMessage's root, the container's only child), and not the chat's
+     (`.vscode-chat-history`). The PDF viewer has its own zoom, and the chat's
+     is persisted in localStorage, so a PDF exported months apart would not
+     even match itself. Those zooms also broke pagination: a zoomed subtree
+     inside the editor's flex column printed taller than the box Chromium
+     reserved for it, so the last lines ran past the editor area. The app's
+     width is `100vw / scale` to compensate its zoom, so it goes with it. */
+  .vscode-app,
+  .vscode-chat-history,
+  .markdown-preview-container > div {
+    zoom: 1 !important;
+  }
+  .vscode-app {
+    width: auto !important;
+  }
+
+  /* Hide UI elements not meant for printing */
+  .vscode-activitybar,
+  .vscode-sidebar,
+  .vscode-tabs,
+  .vscode-bottom-panel,
+  .vscode-resizer-horizontal,
+  .vscode-resizer-vertical,
+  .vscode-chat-header, 
+  .vscode-chat-toolbar,
+  #web-search-toggle,
+  .vscode-settings-input,
+  .vscode-statusbar,
+  .msg-action-btn {
+    display: none !important;
+  }
+
+  /* Chat printing (default behavior). The chat-bottom and studio layouts
+     mount the chat *inside* the editor panel, so hiding the panel outright
+     printed a blank page there: keep the panel when it holds the chat and
+     hide everything else in it instead. */
+  body:not(.printing-editor) .vscode-editor-panel:not(:has(> .vscode-chat)) {
+    display: none !important;
+  }
+  body:not(.printing-editor) .vscode-editor-panel:has(> .vscode-chat) {
+    display: block !important;
+  }
+  body:not(.printing-editor) .vscode-editor-panel:has(> .vscode-chat) > :not(.vscode-chat) {
+    display: none !important;
+  }
+  body:not(.printing-editor) .vscode-chat {
+    width: 100% !important;
+    border: none !important;
+  }
+  /* The printed chat is the conversation: everything else the panel holds is
+     window chrome. Listing those pieces by name does not work — the web-search
+     bar and the MCP panel are styled inline and carry no class of their own —
+     so the history is named instead and its siblings (header, toolbars, the
+     composer with its model selector and send button) go. */
+  body:not(.printing-editor) .vscode-chat > :not(.vscode-chat-history) {
+    display: none !important;
+  }
+  body:not(.printing-editor) .vscode-chat-msg-content {
+    color: black !important;
+  }
+  body:not(.printing-editor) .vscode-chat-msg-header {
+    color: #333 !important;
+  }
+
+  /* Editor preview printing */
+  body.printing-editor .vscode-chat {
+    display: none !important;
+  }
+
+  /* Force high contrast text colors for all elements */
+  .vscode-chat-history *, 
+  .markdown-preview-container * {
+    color: black !important;
+    text-shadow: none !important;
+  }
+  
+  /* Fix code block backgrounds and borders for print */
+  .vscode-chat-history pre, 
+  .markdown-preview-container pre,
+  .vscode-chat-history code, 
+  .markdown-preview-container code,
+  .vscode-chat-history .chat-inline-code,
+  .markdown-preview-container .chat-inline-code,
+  .vscode-chat-history div[style*="background"],
+  .markdown-preview-container div[style*="background"] {
+    background: #f8f8f8 !important;
+    color: #222 !important;
+    border-color: #ccc !important;
+  }
+
+  /* Fix links */
+  .vscode-chat-history a, 
+  .markdown-preview-container a {
+    color: #0056b3 !important;
+  }
+
+  /* Side-by-side Markdown preview: print the rendered pane only, full width.
+     react-split writes the pane widths inline, so these have to override. */
+  body.printing-editor .editor-split {
+    display: block !important;
+    height: auto !important;
+  }
+  body.printing-editor .editor-split-source,
+  body.printing-editor .editor-split .gutter {
+    display: none !important;
+  }
+  body.printing-editor .editor-split-preview {
+    width: 100% !important;
+    height: auto !important;
+    position: static !important;
+    border: none !important;
+  }
+
+  .thinking-indicator {
+    display: none !important;
+  }
+}
+
+.gutter { background-color: var(--vscode-border, #1E2330); background-repeat: no-repeat; background-position: 50%; transition: background-color 0.2s; z-index: 100; }
+.gutter.gutter-horizontal { cursor: col-resize; }
+.gutter.gutter-horizontal:hover { background-color: var(--vscode-button-bg, #0e639c); }
+
+/* ─── Custom Editor Context Menu ─────────────────────────────────────────
+   Replaces Monaco's built-in Shadow DOM menu which has a hover highlight
+   offset bug. Styled to match VS Code's native dark theme menu.         */
+
+.editor-ctx-menu {
+  position: fixed;
+  z-index: 10000;
+  min-width: 200px;
+  background: var(--vscode-sidebar-bg);
+  border: 1px solid var(--vscode-border);
+  border-radius: 5px;
+  padding: 4px 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  color: var(--vscode-text-fg);
+}
+
+.editor-ctx-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 4px 24px;
+  border: none;
+  background: transparent;
+  color: var(--vscode-text-fg);
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  line-height: 22px;
+  white-space: nowrap;
+}
+
+.editor-ctx-item:hover:not(:disabled) {
+  background: #04395e;
+  color: #ffffff;
+}
+
+.editor-ctx-item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.editor-ctx-label {
+  flex: 1;
+}
+
+.editor-ctx-key {
+  margin-left: 32px;
+  color: #888888;
+  font-size: 12px;
+}
+
+.editor-ctx-item:hover .editor-ctx-key {
+  color: #bbbbbb;
+}
+
+.editor-ctx-separator {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--vscode-border);
+}
+
+/* Light theme overrides */
+[data-theme="light"] .editor-ctx-menu,
+.light-theme .editor-ctx-menu {
+  background: var(--vscode-panel-bg);
+  border-color: var(--vscode-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+  color: var(--vscode-text-fg);
+}
+
+[data-theme="light"] .editor-ctx-item,
+.light-theme .editor-ctx-item {
+  color: var(--vscode-text-fg);
+}
+
+[data-theme="light"] .editor-ctx-item:hover:not(:disabled),
+.light-theme .editor-ctx-item:hover:not(:disabled) {
+  background: #0060c0;
+  color: #ffffff;
+}
+
+[data-theme="light"] .editor-ctx-key,
+.light-theme .editor-ctx-key {
+  color: #777777;
+}
+
+[data-theme="light"] .editor-ctx-separator,
+.light-theme .editor-ctx-separator {
+  background: var(--vscode-border);
+}
+
+/* ── react-pdf annotation layer fixes ───────────────────────────────────────
+ *
+ * Context: react-pdf v10 renders highlight/underline/squiggly annotations as
+ * absolutely-positioned <section> elements inside .annotationLayer. By default
+ * AnnotationLayer.css gives every section pointer-events:auto which blocks text
+ * selection underneath. pdfjs also sets background-color inline with full-opacity
+ * yellow, completely hiding the canvas text.
+ *
+ * Fixes applied:
+ *   1. All annotation sections that are not interactive (links, widgets) get
+ *      pointer-events:none so text underneath can be selected.
+ *   2. .highlightAnnotation sections get mix-blend-mode:multiply so the yellow
+ *      tint overlays the canvas text instead of hiding it.
+ *   3. The page wrapper div gets isolation:isolate so the multiply blend target
+ *      is the WHITE page background, not the dark editor — yellow × white = yellow
+ *      tint while dark text remains dark and readable.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/* The page wrapper must form an isolated stacking context so that
+   mix-blend-mode on annotations blends against the WHITE page, not the
+   dark editor background. isolation:isolate is also set inline in JSX. */
+.pdf-page-wrapper {
+  isolation: isolate;
+  background-color: white !important;
+}
+
+/* Outline the page edges against the light canvas (box-shadow instead of a
+   border so page geometry — used for click-to-source mapping — is unchanged).
+   Stacks with the Tailwind shadow-2xl applied on the wrapper. */
+.light-theme .pdf-page-wrapper {
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.12),
+    0 10px 24px rgba(0, 0, 0, 0.14);
+}
+
+/* Also ensure .react-pdf__Page has a white background. If it is transparent,
+   mix-blend-mode: multiply on its children (annotations) blends against 
+   transparent, which becomes opaque yellow when composited later. */
+.react-pdf__Page {
+  background-color: white !important;
+}
+
+/* The blanket `mix-blend-mode: multiply; opacity: 0.6` that used to sit here
+   existed so highlight annotations rendered by pdf.js's HTML layer would blend
+   with the canvas underneath. Markup annotations are now filtered out of that
+   layer (`filterNativeAnnotations` in PdfPreview.jsx) and are painted only by the
+   canvas, from their appearance streams, so the rule no longer has a highlight to
+   blend — it would only dim the links and form widgets that remain, which are
+   supposed to render at full strength. The markup rules below are kept as they
+   are: harmless while the filter is in place, and correct again if it is lifted. */
+
+/* Disable pointer-events on every annotation section; re-enable only for
+   interactive ones. Use !important because AnnotationLayer.css sets
+   .annotationLayer section { pointer-events: auto } unconditionally. */
+.annotationLayer section,
+.annotationLayer .highlightAnnotation {
+  pointer-events: none !important;
+}
+
+.annotationLayer .linkAnnotation,
+.annotationLayer :is(.buttonWidgetAnnotation,
+                      .checkboxWidgetAnnotation,
+                      .radioButtonWidgetAnnotation,
+                      .textWidgetAnnotation,
+                      .choiceWidgetAnnotation) {
+  pointer-events: auto !important;
+}
+
+
+/* Sometimes PDF.js renders the text of the highlight annotation itself.
+   Make sure it stays transparent so it doesn't create garbled double-text. */
+.annotationLayer .highlightAnnotation * {
+  color: transparent !important;
+}
+
+.annotationLayer .underlineAnnotation,
+.annotationLayer .squigglyAnnotation,
+.annotationLayer .strikeoutAnnotation {
+  mix-blend-mode: multiply !important;
+  opacity: 0.8;
+}
+
+
+/* ── Spinner used by inline status indicators ────────────────────────────────
+   `className="spin"` was already in use (the interrupt button, the prompt
+   evolution indicator) with no rule behind it anywhere, so those icons sat
+   still while claiming to be working. */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+.spin-slow {
+  animation: spin 2.5s linear infinite;
+}
+
+/* ── Delivery feedback for messages sent into a running turn ────────────────
+   Colours live here rather than inline so the light theme can override them:
+   the dark-theme amber and teal wash out to near-invisible on a white ground,
+   which is exactly the failure an "is it there yet?" indicator cannot have. */
+.chat-msg-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+}
+
+.chat-msg-badge-step-running {
+  color: var(--vscode-textLink-foreground, #3794ff);
+  background-color: rgba(124, 108, 242, 0.15);
+  border-color: rgba(124, 108, 242, 0.35);
+  font-weight: 500;
+}
+
+.chat-msg-badge-sending {
+  color: var(--vscode-descriptionForeground, #858585);
+  padding: 0;
+  border: none;
+}
+
+/* Where the agent's context was compacted into a summary (/compact). */
+.chat-compaction-divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 0;
+  clear: both;
+}
+
+.chat-compaction-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.chat-compaction-rule {
+  flex: 1;
+  height: 0;
+  border-top: 1px dashed var(--vscode-border, rgba(255, 255, 255, 0.18));
+}
+
+.chat-compaction-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  min-width: 0;
+  max-width: 80%;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground, #858585);
+  text-align: center;
+}
+
+.chat-compaction-stats {
+  opacity: 0.8;
+}
+
+.chat-compaction-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 85%;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground, #858585);
+  text-align: center;
+  word-break: break-word;
+}
+
+.chat-compaction-warning {
+  color: var(--vscode-editorWarning-foreground, #cca700);
+}
+
+.chat-compaction-summary {
+  width: 100%;
+  font-size: 12px;
+}
+
+.chat-compaction-summary > summary {
+  cursor: pointer;
+  text-align: center;
+  font-size: 11px;
+  color: var(--vscode-textLink-foreground, #3794ff);
+  list-style: none;
+}
+
+.chat-compaction-summary > summary::-webkit-details-marker {
+  display: none;
+}
+
+.chat-compaction-summary-body {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-left: 2px solid var(--vscode-border, rgba(255, 255, 255, 0.18));
+  background: var(--vscode-badge-background, rgba(255, 255, 255, 0.04));
+  border-radius: 4px;
+  max-height: 420px;
+  overflow: auto;
+}
+
+.chat-msg-badge-waiting {
+  color: #e5c07b;
+  background-color: rgba(229, 192, 123, 0.12);
+  border-color: rgba(229, 192, 123, 0.45);
+}
+
+.chat-msg-badge-delivered {
+  color: #4ec9b0;
+  background-color: rgba(78, 201, 176, 0.12);
+  border-color: rgba(78, 201, 176, 0.45);
+}
+
+.chat-msg-badge-cancel {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  padding: 0 0 0 2px;
+}
+
+.chat-queue-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  font-size: 11px;
+  color: #e5c07b;
+  background-color: rgba(229, 192, 123, 0.10);
+  border-top: 1px solid rgba(229, 192, 123, 0.30);
+}
+
+.chat-queue-strip-action {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  text-decoration: underline;
+  padding: 0;
+  font-size: 11px;
+}
+
+/* Amber and teal at dark-theme lightness are unreadable on white. These are the
+   same hues taken down to text contrast, not different colours. */
+.light-theme .chat-msg-badge-waiting {
+  color: #7a4f00;
+  background-color: rgba(229, 192, 123, 0.28);
+  border-color: rgba(122, 79, 0, 0.40);
+}
+
+.light-theme .chat-msg-badge-delivered {
+  color: #0a6250;
+  background-color: rgba(78, 201, 176, 0.24);
+  border-color: rgba(10, 98, 80, 0.40);
+}
+
+.light-theme .chat-msg-badge-step-running {
+  color: var(--vscode-accent);
+  background-color: rgba(88, 71, 214, 0.12);
+  border-color: rgba(88, 71, 214, 0.35);
+}
+
+.light-theme .chat-queue-strip {
+  color: #7a4f00;
+  background-color: rgba(229, 192, 123, 0.24);
+  border-top-color: rgba(122, 79, 0, 0.35);
+}
+
+/* The local-model attachment warning in the same composer strip carried the
+   same hardcoded dark-theme tan and washed out identically. */
+.chat-attachment-warning {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: #d7ba7d;
+}
+
+.light-theme .chat-attachment-warning {
+  color: #7a4f00;
+}
+
+/* A message queued during a turn changes state without the user acting again,
+   so the moment the agent reads it has to catch the eye on its own. */
+@keyframes chatMessageDelivered {
+  0% { transform: scale(0.9); opacity: 0; }
+  35% { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.chat-msg-delivered {
+  animation: chatMessageDelivered 420ms ease-out;
+}

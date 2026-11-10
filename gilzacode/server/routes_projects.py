@@ -45,11 +45,15 @@ async def import_project(request: web.Request) -> web.Response:
     return await _add(request, must_exist=True)
 
 
-@routes.post("/api/projects/rename")
-async def rename_project(request: web.Request) -> web.Response:
+@routes.post("/api/projects/update")
+async def update_project(request: web.Request) -> web.Response:
+    """``{"name": key, "changes": {field: value}}``; see `projects.UPDATABLE`."""
     data = await read_json(request)
+    changes = data.get("changes")
+    if not isinstance(changes, dict):
+        return error(400, "changes must be an object")
     try:
-        project = projects.rename(data.get("name", ""), data.get("project_name", ""))
+        project = projects.update(data.get("name", ""), changes)
     except projects.ProjectError as exc:
         return error(400, str(exc))
     return web.json_response(project.to_json())
