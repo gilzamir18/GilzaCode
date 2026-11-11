@@ -130,9 +130,12 @@ def environment_with_managed_tools(env=None) -> dict:
     the app starts — an agent's ``run_command``, the integrated terminal —
     could not run ``tectonic`` although the IDE compiles with it. Their
     directories are prepended, matching :func:`find_tool`'s order; entries
-    already on ``PATH`` are left where they are.
+    already on ``PATH`` are left where they are. It is also the user's own
+    environment, not a packaged build's (``subprocess_utils.host_environment``).
     """
-    result = dict(os.environ if env is None else env)
+    from .subprocess_utils import host_environment
+
+    result = host_environment(env)
     entries = [entry for entry in result.get("PATH", "").split(os.pathsep) if entry]
     present = {os.path.normcase(os.path.abspath(entry)) for entry in entries}
     extra = []

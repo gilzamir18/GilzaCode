@@ -11,10 +11,11 @@ import asyncio
 import mimetypes
 import os
 import shutil
+import sys
 
 from aiohttp import web
 
-from gilzacode import settings
+from gilzacode import desktop, settings
 from gilzacode.files import PathOutsideProject, file_tree, normalize_rel, resolve, unique_target
 from gilzacode.server.app import error, read_json
 from gilzacode.server.routes_cloud import notify_change
@@ -249,7 +250,7 @@ async def rename_path(request: web.Request) -> web.Response:
 
 @routes.post("/api/file/open-explorer")
 async def open_in_explorer(request: web.Request) -> web.Response:
-    """Open the project folder, or one of its files, with the Windows shell."""
+    """Open the project folder, or one of its files, with the Windows shell or the Linux desktop."""
     data = await read_json(request)
     project_path, file_path = data.get("projectPath"), data.get("filePath")
     if not project_path or not os.path.isdir(project_path):
@@ -263,7 +264,10 @@ async def open_in_explorer(request: web.Request) -> web.Response:
         if not os.path.exists(target):
             return error(404, "File not found")
     try:
-        await asyncio.to_thread(os.startfile, os.path.abspath(target))
+        if sys.platform == "win32":
+            await asyncio.to_thread(os.startfile, os.path.abspath(target))
+        else:
+            await asyncio.to_thread(desktop.open_with_desktop, os.path.abspath(target))
     except OSError as exc:
         return error(500, str(exc))
     return web.json_response({"success": True})

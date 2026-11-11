@@ -89,7 +89,7 @@ def test_partial_compile_injects_includeonly(monkeypatch, tmp_path):
 
     monkeypatch.setattr(latex_compiler, "get_tectonic_path", lambda: "tectonic")
 
-    def fake_run(cmd, cwd, capture_output, encoding, errors):
+    def fake_run(cmd, cwd, capture_output, encoding, errors, env=None):
         preview = tmp_path / "gilzacode_partial_one.tex"
         source = preview.read_text(encoding="utf-8")
         assert "\\includeonly{chapters/one}" in source
@@ -120,7 +120,7 @@ def test_full_compile_preserves_crlf_without_inserting_blank_lines(monkeypatch, 
 
     monkeypatch.setattr(latex_compiler, "get_tectonic_path", lambda: "tectonic")
 
-    def fake_run(cmd, cwd, capture_output, encoding, errors):
+    def fake_run(cmd, cwd, capture_output, encoding, errors, env=None):
         (tmp_path / "main.pdf").write_bytes(b"%PDF")
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
@@ -172,7 +172,7 @@ def test_full_compile_enriches_undefined_control_sequence_log(monkeypatch, tmp_p
     main.write_text(content, encoding="utf-8")
     monkeypatch.setattr(latex_compiler, "get_tectonic_path", lambda: "tectonic")
 
-    def fake_run(cmd, cwd, capture_output, encoding, errors):
+    def fake_run(cmd, cwd, capture_output, encoding, errors, env=None):
         return subprocess.CompletedProcess(
             cmd,
             1,
@@ -213,7 +213,7 @@ def test_partial_compile_reuses_main_bibliography_artifacts(monkeypatch, tmp_pat
 
     monkeypatch.setattr(latex_compiler, "get_tectonic_path", lambda: "tectonic")
 
-    def fake_run(cmd, cwd, capture_output, encoding, errors):
+    def fake_run(cmd, cwd, capture_output, encoding, errors, env=None):
         assert (tmp_path / "gilzacode_partial_one.aux").read_text(encoding="utf-8") == "\\bibdata{refs}\n"
         assert "doe2020" in (tmp_path / "gilzacode_partial_one.bbl").read_text(encoding="utf-8")
         (tmp_path / "gilzacode_partial_one.pdf").write_bytes(b"%PDF")
@@ -255,7 +255,7 @@ def test_partial_compile_runs_bibtex_when_no_bbl_exists(monkeypatch, tmp_path):
     monkeypatch.setattr(latex_compiler.shutil, "which", lambda name: "bibtex" if name == "bibtex" else None)
     calls = []
 
-    def fake_run(cmd, cwd, capture_output, encoding, errors):
+    def fake_run(cmd, cwd, capture_output, encoding, errors, env=None):
         calls.append(cmd[0])
         if cmd[0] == "tectonic":
             preview_source = (tmp_path / "gilzacode_partial_one.tex").read_text(encoding="utf-8")
@@ -304,7 +304,7 @@ def test_partial_compile_preserves_chapter_number_for_input_chapter(monkeypatch,
 
     monkeypatch.setattr(latex_compiler, "get_tectonic_path", lambda: "tectonic")
 
-    def fake_run(cmd, cwd, capture_output, encoding, errors):
+    def fake_run(cmd, cwd, capture_output, encoding, errors, env=None):
         preview_source = (tmp_path / "gilzacode_partial_discussion.tex").read_text(encoding="utf-8")
         assert "\\setcounter{chapter}{3}\n\\input{discussion}" in preview_source
         assert "skipped \\input{frontmatter}" in preview_source
@@ -339,7 +339,7 @@ def test_compile_latex_draft_mode_uses_v2_cli_flags_without_synctex_by_default(m
 
     monkeypatch.setattr(latex_compiler, "get_tectonic_path", lambda: "tectonic")
 
-    def fake_run(cmd, cwd, capture_output, encoding, errors):
+    def fake_run(cmd, cwd, capture_output, encoding, errors, env=None):
         nonlocal captured_cmd
         captured_cmd = cmd
         (tmp_path / "document.pdf").write_bytes(b"%PDF")
@@ -375,7 +375,7 @@ def test_compile_latex_draft_mode_can_enable_synctex(monkeypatch, tmp_path):
 
     monkeypatch.setattr(latex_compiler, "get_tectonic_path", lambda: "tectonic")
 
-    def fake_run(cmd, cwd, capture_output, encoding, errors):
+    def fake_run(cmd, cwd, capture_output, encoding, errors, env=None):
         nonlocal captured_cmd
         captured_cmd = cmd
         (tmp_path / "document.pdf").write_bytes(b"%PDF")
@@ -413,7 +413,7 @@ def test_compile_latex_partial_draft_mode_uses_v2_cli_flags_without_synctex_by_d
 
     monkeypatch.setattr(latex_compiler, "get_tectonic_path", lambda: "tectonic")
 
-    def fake_run(cmd, cwd, capture_output, encoding, errors):
+    def fake_run(cmd, cwd, capture_output, encoding, errors, env=None):
         nonlocal captured_cmd
         captured_cmd = cmd
         (tmp_path / "gilzacode_partial_chapter1.pdf").write_bytes(b"%PDF")
@@ -451,7 +451,7 @@ def test_compile_latex_partial_draft_mode_can_enable_synctex(monkeypatch, tmp_pa
 
     monkeypatch.setattr(latex_compiler, "get_tectonic_path", lambda: "tectonic")
 
-    def fake_run(cmd, cwd, capture_output, encoding, errors):
+    def fake_run(cmd, cwd, capture_output, encoding, errors, env=None):
         nonlocal captured_cmd
         captured_cmd = cmd
         (tmp_path / "gilzacode_partial_chapter1.pdf").write_bytes(b"%PDF")

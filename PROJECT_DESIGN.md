@@ -1,6 +1,6 @@
 # GilzaCode Project Design
 
-GilzaCode is a Windows desktop workspace for reading and writing: PDF with
+GilzaCode is a desktop workspace for reading and writing, on Windows and Linux: PDF with
 AI-assisted reading, LaTeX with compile/preview/SyncTeX, Rich Text and WYSIWYG
 editing, Markdown. It reuses the **interface** of GilzaBots and replaces GilzaBots'
 own agent with **Claude Code**, connected through an MCP server of the
@@ -11,7 +11,7 @@ application. GilzaBots is unchanged; GilzaCode copies what it needs from it.
 ## 1. Architecture
 
 ```
-GilzaCode.exe (pywebview + WebView2)
+GilzaCode.exe (pywebview + WebView2)      Linux: GilzaCode (pywebview + QtWebEngine)
  ├─ Interface: React/Vite, reused from GilzaBots' gui_src (phase 2)
  ├─ Loopback server (aiohttp): files, projects, settings, clipboard,
  │    LaTeX/Tectonic, SyncTeX, PDF annotations, Git, terminal PTY, speech,
@@ -110,7 +110,7 @@ them, so the front-end ports unchanged. Projects moved from
   working directory (`WinError 32`). Closing the PTY also ends the programs
   started from it.
 - `connection.json`: see §3.
-- `webview/`: the WebView2 profile.
+- `webview/`: the browser profile (WebView2 on Windows, QtWebEngine on Linux).
 - Writes are atomic (temporary file + `os.replace`).
 
 ## 5. The window (`gilzacode/window/webview2.py`, `gilzacode/launcher.py`)
@@ -135,6 +135,67 @@ The server runs on its own event loop in a daemon thread, because the main
 thread belongs to the window. The port is the first free one from 3100.
 `--browser` opens the interface in the default browser for development.
 
+### 5.1 Linux: QtWebEngine (`gilzacode/window/qt.py`)
+
+GilzaBots' window is QtWebEngine on Linux (its §2.16.1). GilzaCode takes the
+same engine and the same verified Qt range, adapted the way the Windows window
+was. Windows is untouched: it never imports this module, and its dependencies
+carry no Qt.
+
+- **pywebview's Qt backend, not patched.** GilzaBots monkey-patched pywebview's
+  Qt classes. Here, as for WebView2, the handlers are connected in pywebview's
+  `before_show`. It runs synchronously on the UI thread, after the page and its
+  profile exist and before the window is shown. The handlers:
+  - permissions: microphone and camera granted, everything else denied
+    (`permissionRequested`). pywebview's own handler passes plain integers to
+    `setFeaturePermission`, which PyQt6 refuses, so it is disconnected;
+  - full screen: the page's request is accepted and the window follows. This
+    needs `FullScreenSupportEnabled`; GilzaBots' QtWebEngine refused
+    presentation mode;
+  - `window.print()`: saved as a PDF the user names (GilzaBots);
+  - downloads: saved where the user chooses, starting in Downloads. pywebview's
+    handler uses a Qt 5 API;
+  - a dead renderer: reloaded once, then the user is offered a restart. This
+    is `webview2.failure_action`, shared with Windows.
+- **No `webview.screens` before `webview.start` on Linux.** It initialises
+  pywebview without a backend, which on Linux tries GTK first and imports the
+  Qt backend early enough to fix its profile in `~/.pywebview`. That is where
+  GilzaBots' Qt profile ended up. The window is sized in `before_show` from Qt's
+  own screen, with the same 80 % rule as Windows (`launcher.size_for_screen`).
+  The profile is in `<gilzacode home>/webview`.
+- **Refusals instead of worse failures** (`require_runtime`). Asked for
+  `gui="qt"`, pywebview silently falls back to GTK (WebKitGTK) when Qt does not
+  load; that is reported instead. As root, Chromium aborts its zygote ("Running
+  as root without --no-sandbox is not supported") and no window appears; that
+  is refused with a reason, unless the user turned the sandbox off with
+  QtWebEngine's own switches.
+- **Graphics: GPU off by default** (`apply_environment`), as in GilzaBots on
+  Linux. QtWebEngine runs its GPU service inside this process, and Mesa's
+  Zink/EGL can abort at startup without a DRM render node. The setting is
+  `--disable-gpu` plus `QT_QUICK_BACKEND=software`; the flag alone still
+  composites through the driver. `GILZACODE_DISABLE_GPU=0` turns the GPU on for
+  one run, and any other value is refused. GilzaBots' Settings toggle is not
+  ported: GilzaCode dropped the window-graphics section (§7). A restart gets
+  the environment from before this run (`pristine_environment`), so the flags
+  pywebview appends do not pile up.
+- **Clipboard** (`gilzacode/qt_clipboard.py`). The front-end sends clipboard
+  calls to `/api/clipboard/*` on every platform. On Linux the window's
+  `QClipboard` answers, on the UI thread (`run_on_ui_thread`), and it serves X11
+  and Wayland. GilzaBots' fallback, a throwaway `QApplication` in a
+  `sys.executable -c` subprocess, cannot work in a frozen build and is not
+  copied. With `--browser` there is no clipboard, and the request says so.
+- **Opening files and links** (`gilzacode/desktop.py`): `xdg-open`, watched for
+  1.5 s for an early failure (GilzaBots). Web links and the Google sign-in also
+  go through it on Linux, not `webbrowser`, for the reason in §10.
+- **The terminal** is bash in a PTY (the POSIX path copied from GilzaBots).
+- **Verified** with `scripts/smoke_linux_window.py`, which opens the real window
+  with QtWebEngine's remote debugging and checks it through the DevTools
+  protocol. It checks that the interface renders, the Qt clipboard round-trips,
+  full screen is accepted, geolocation is denied, the terminal's shell gets the
+  user's `LD_LIBRARY_PATH`, the profile is in `<gilzacode home>/webview`, and no
+  renderer died. Run under WSLg (Ubuntu 26.04) on X11 and Wayland, from source
+  and from the installed bundle.
+
 ## 6. Document features (`gilzacode/latex_compiler.py`, `synctex_parser.py`, `pdf_annotations.py`, `git_repo.py`, `terminal_manager.py`, `speech/`)
 
 The modules are GilzaBots' and AgenticBlocks', copied with their names
@@ -156,8 +217,8 @@ changed. Their own tests came with them. The routes are new.
   review layout, restore/archive) is not ported. A request for it is refused
   with a pointer to Claude Code's `/rewind`, not served from the user's
   repository.
-- **Terminal** (`routes_terminal.py`): one winpty PowerShell per bottom-panel
-  tab, streamed over SSE with the stream offset as the event id, so a
+- **Terminal** (`routes_terminal.py`): one winpty PowerShell (Linux: bash in a
+  PTY) per bottom-panel tab, streamed over SSE with the stream offset as the event id, so a
   reconnecting client receives only what it missed. `/api/terminal/output` is
   read-only, for the MCP tools.
 - **Restart without CREATE_NEW_PROCESS_GROUP** (`launcher.spawn_detached`).
@@ -220,8 +281,11 @@ reports a dangling name when the line runs; the cut was driven by it.
 ### The panel
 
 - **The session** is a PTY with the terminal id `claude` that runs the
-  `claude` CLI in the project folder. It is found on `PATH`, or at
-  `GILZACODE_CLAUDE`. A missing CLI is reported in the panel with what to
+  `claude` CLI in the project folder. It is found at `GILZACODE_CLAUDE`, on
+  `PATH`, or on Linux in `~/.local/bin`, where Claude Code's installer puts it
+  (`claude_cli.installer_locations`). A program started from the desktop menu
+  gets the login session's `PATH`, which lacks that folder until the next login
+  after it was created. A missing CLI is reported in the panel with what to
   install.
 - **Transport:** the panel streams and types through the terminal endpoints,
   so it reuses the bottom panel's xterm component. Opening the panel starts
@@ -455,6 +519,104 @@ administrator rights.
   requirement) or when WebView2 is missing, and installs neither.
 - **No PATH entry**, unlike GilzaBots: GilzaCode has no command-line interface.
 
+### 10.1 Linux (`build_exe.sh`, `packaging/GilzaCode-linux.spec`, `install.sh`, `uninstall.sh`)
+
+Supported: Ubuntu 22.04 or newer, x86_64. GilzaBots supports 24.04 and 26.04
+and builds on `ubuntu-latest`. GilzaCode builds on the oldest supported release,
+because PyInstaller copies the build machine's Python and libraries, and they
+need that machine's glibc or a newer one.
+
+**What the build produces.** `build_exe.sh` checks the Qt that will be packaged
+(`scripts/check_qt_runtime.py`) and builds the interface. It downloads
+Tectonic 0.15.0 (the static musl build, which also serves the in-app install)
+and pandoc 3.10, and runs `packaging/GilzaCode-linux.spec`. The result is
+`dist/GilzaCode/` (`GilzaCode` and `gilzacode-mcp`) and
+`dist/GilzaCode-linux-x64.tar.gz`, about 360 MB. The Windows spec and entry
+point are untouched; Linux has its own (`entry_gilzacode_linux.py`).
+
+**The build checks itself**, as on Windows (the bridge must answer
+`initialize`), and runs GilzaBots' library gate
+(`scripts/check_bundle_libraries.py`). PyInstaller only warns when the build
+machine lacks a library, and the bundle then starts only where the user happens
+to have it. The gate runs `ldd` on what the window loads and refuses anything
+that resolves outside the bundle, except what PyInstaller deliberately leaves to
+the host (glibc, the GL/EGL/DRM stack, `libxcb.so.1`, Wayland). In a stock
+`ubuntu:22.04` container it refused the first build: QtWebEngineProcess links
+libXcomposite, libXdamage, libXrandr, libXtst and libxkbfile, on top of
+GilzaBots' nine xcb libraries. The build header and `release.yml` list all of
+them.
+
+**libgbm and libstdc++ are left to the system** (`HOST_LIBRARIES` in the spec and
+the gate, kept equal by a test). PyInstaller bundles both. Everything in the
+bundle comes first on `LD_LIBRARY_PATH`, so the system's Mesa drivers, loaded
+into this process, got the 22.04 copies. Each was measured on the bundle built
+on 22.04, and removing that one library alone fixed it:
+- **libgbm** is Mesa's own and tied to its drivers. Without the fix, the window
+  did not open on Ubuntu 26.04, on X11 or Wayland (WSLg) or under Xvfb.
+- **libstdc++** is older than a newer Mesa's LLVM needs. Without the fix, the
+  window did not open on 24.04 ("Could not initialize GLX"). Removing each of
+  the 18 other bundled libraries that Mesa also loads, one at a time, changed
+  nothing. The system's libstdc++ always serves the bundle, because the build
+  runs on the oldest supported release.
+
+Every desktop has both (`libgbm1`, `libstdc++6`). PyInstaller already leaves
+libGL, libEGL and libdrm to the host for the same reason.
+
+**The library path: the app keeps the bundle's, started programs get the
+user's** (`subprocess_utils.host_environment`). The bootloader puts the bundle's
+`_internal` at the front of `LD_LIBRARY_PATH` and keeps the user's value in
+`LD_LIBRARY_PATH_ORIG` (measured with PyInstaller 6.22).
+- **The app needs it.** QtWebEngineProcess, which Chromium starts with this
+  process's environment, needs it: its RUNPATH reaches only `PyQt6/Qt6/lib`,
+  and it links NSS and X libraries the bundle carries in `_internal`.
+- **Restoring the user's value globally was tried first, and it was wrong.**
+  It passed on a machine with NSS installed. In a container without NSS,
+  QtWebEngineProcess failed on `libnspr4.so` and no page appeared.
+- **Everything the app starts gets the user's value back.** That covers the
+  terminal's bash, Claude Code and `claude -p`, git, Tectonic, pandoc,
+  `xdg-open` and the restart. Otherwise they would load the bundle's OpenSSL
+  and friends.
+- **No `webbrowser` on Linux.** It takes no environment, so links and the Google
+  sign-in go through `xdg-open` (`desktop.open_url`).
+- **A test keeps it that way.** Every spawn in the package must pass `env=`,
+  except the Windows restart, which is unchanged
+  (`test_every_started_program_gets_an_explicit_environment`).
+
+**`install.sh`** is `install.ps1` for Linux, per user, with no administrator
+rights:
+- **Where it installs:** `~/.local/share/GilzaCode`.
+- **Package source:** `--source`, then `GILZACODE_DOWNLOAD_URL`, then the latest
+  release's `GilzaCode-linux-x64.tar.gz`.
+- **Unpacking:** into a staging folder first, so a broken package leaves the
+  installed version alone. It refuses to unpack over a running copy (read from
+  `/proc/*/exe`).
+- **What it creates:** a `gilzacode.desktop` menu entry, matching the window's
+  Wayland app id (`setDesktopFileName`).
+- **What it checks:** it warns when `claude` is missing. It adds no PATH entry,
+  as on Windows.
+
+**`uninstall.sh`** keeps `uninstall.ps1`'s guarantees:
+- it refuses while anything runs from the installation;
+- files go first;
+- only the menu entry that starts this installation is removed;
+- global data goes only with `--purge` and a typed confirmation;
+- project folders are never touched.
+
+**Releases** (`release.yml`): the windows job is unchanged. Three Linux jobs
+follow it:
+- **`linux`** builds in an `ubuntu:22.04` container, after the same version and
+  secret checks and the same tests. Python 3.12 is python-build-standalone,
+  through `setup-uv`.
+- **`linux-smoke`** installs the package with `install.sh`, as a normal user, on
+  `ubuntu:22.04`, `24.04`, `26.04` and `rolling`. It opens the window under
+  Xvfb with `scripts/smoke_linux_window.py`, with Chromium's sandbox on. The
+  containers carry what every Ubuntu desktop has (Mesa, Wayland and the base X
+  libraries). The jobs were reproduced locally in Docker 29 with its default
+  seccomp profile, where all four passed. The GitHub runner itself has not run
+  them yet.
+- **`linux-release`** attaches `GilzaCode-linux-x64.tar.gz` after the windows
+  job, which creates the release.
+
 **`uninstall.ps1`** keeps GilzaBots' guarantees:
 - failures are logged and stay on screen;
 - it refuses while anything runs from the installation, the bridge included;
@@ -475,6 +637,8 @@ administrator rights.
 4. **MCP tools** — done (§8, *MCP tools*).
 5. **Packaging** — done (§10).
 6. **Cloud sync** — done (§9).
+6.1. **Linux** — done: QtWebEngine window (§5.1), package, installer and
+   release jobs (§10.1).
 7. **Next**: porting GilzaBots' browser suite, the optional channel, a
    terminal emulator for reading the Claude panel, and the leftovers in §7.
 
@@ -485,8 +649,13 @@ administrator rights.
   `GILZACODE_HOME`.
 - GilzaBots' tests that drove `route_api` run unchanged through
   `tests/legacy_api.py`, which sends their calls as real HTTP requests.
-- Terminal tests use a real PowerShell under winpty, and Git tests use real
-  repositories. The import test sends the multipart body exactly as Chromium
+- Terminal tests use a real PowerShell under winpty on Windows
+  (`test_terminal_api.py`) and a real bash in a PTY on Linux
+  (`test_terminal_api_posix.py`), and Git tests use real repositories.
+- The suite runs on Windows and on Linux (the release builds run it on both).
+  `test_linux_window.py` covers the Linux window's policies on every platform,
+  and a real `QClipboard` where PyQt6 is installed. The real window is checked
+  by `scripts/smoke_linux_window.py` (§5.1, §10.1). The import test sends the multipart body exactly as Chromium
   does.
 - GilzaBots' browser suite (`gui_src/test/browser`: PDF look-up and translation
   popups, presentation mode, terminal selection, editor file switch) depends on

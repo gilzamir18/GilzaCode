@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img alt="Platform: Windows 11" src="https://img.shields.io/badge/platform-Windows%2011-6d5ce8">
+  <img alt="Platform: Windows 11 and Ubuntu 22.04 or newer" src="https://img.shields.io/badge/platform-Windows%2011%20%7C%20Ubuntu%2022.04%2B-6d5ce8">
   <img alt="Requires Claude Code" src="https://img.shields.io/badge/requires-Claude%20Code-6d5ce8">
   <img alt="Free: no account, no subscription" src="https://img.shields.io/badge/price-free-6d5ce8">
   <img alt="Interface: English and Brazilian Portuguese" src="https://img.shields.io/badge/UI-English%20%7C%20Portugu%C3%AAs-6d5ce8">
@@ -33,7 +33,7 @@
 </p>
 
 > [!NOTE]
-> **Free, with no account and no subscription.** The only thing GilzaCode needs besides Windows is
+> **Free, with no account and no subscription.** The only thing GilzaCode needs besides Windows or Linux is
 > [Claude Code](https://code.claude.com). GilzaCode itself calls no model: the conversation belongs
 > to Claude Code, under your own Claude plan.
 
@@ -129,6 +129,7 @@ The architecture and design decisions are documented in [PROJECT_DESIGN.md](PROJ
 ### Requirements
 
 - **Windows 11.** The WebView2 Runtime and .NET Framework that the window needs ship with it.
+- **Or Linux: Ubuntu 22.04 or newer, x86_64.** The window's browser engine (QtWebEngine) ships inside the package.
 - **[Claude Code](https://code.claude.com)**, with `claude` on your `PATH`. The installer warns if it is missing.
 
 ### Windows
@@ -162,6 +163,27 @@ powershell -ExecutionPolicy Bypass -File install.ps1 -Source dist\GilzaCode-wind
 The installer downloads the latest release and installs it **for your user only** into
 `%LOCALAPPDATA%\GilzaCode`, with no administrator rights. It creates shortcuts on the Desktop and in
 the Start menu, and an entry in **Settings › Apps › Installed apps**.
+
+### Linux
+
+Open a terminal and run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gilzamir18/GilzaCode/HEAD/install.sh | bash
+```
+
+<details>
+<summary>Installing a package you built or downloaded</summary>
+
+```bash
+bash install.sh --source dist/GilzaCode-linux-x64.tar.gz
+```
+
+</details>
+
+The installer installs the latest release **for your user only** into `~/.local/share/GilzaCode`,
+with no administrator rights, and adds GilzaCode to the application menu. It does not run as root:
+the window's browser engine refuses to.
 
 ---
 
@@ -234,9 +256,10 @@ Each project can be mirrored to **Google Drive** and continued on another comput
 ## 🗑️ Uninstall
 
 Use **Settings › Apps › Installed apps › GilzaCode**, or **Uninstall GilzaCode** in the Start menu.
+On Linux, run `bash ~/.local/share/GilzaCode/GilzaCode/_internal/uninstall.sh` (the installer prints it).
 
-Your settings and project list in `~\.gilzacode` are kept unless you run the uninstaller with
-`-Purge`, which asks for confirmation. **Project folders are never removed.**
+Your settings and project list in `~/.gilzacode` are kept unless you run the uninstaller with
+`-Purge` (Linux: `--purge`), which asks for confirmation. **Project folders are never removed.**
 
 ---
 
@@ -271,6 +294,14 @@ cd gui; npm run test:wysiwyg; npx eslint src; cd ..     # interface
 powershell -ExecutionPolicy Bypass -File build_exe.ps1
 ```
 
+```bash
+# Linux package: dist/GilzaCode/ and dist/GilzaCode-linux-x64.tar.gz (see the header of
+# build_exe.sh for the libraries the build machine needs; build on Ubuntu 22.04)
+bash build_exe.sh
+# open the real window and check it (needs a display, or xvfb-run)
+python3 scripts/smoke_linux_window.py -- ~/.local/share/GilzaCode/GilzaCode/GilzaCode
+```
+
 To ship Google Drive sync ready to use, set `GILZACODE_GDRIVE_CLIENT_ID` and
 `GILZACODE_GDRIVE_CLIENT_SECRET` (a "Desktop app" OAuth client) before running `build_exe.ps1`, or
 embed the client once with `python scripts\embed_google_client.py --from-file client_secret_….json`.
@@ -278,7 +309,9 @@ The embedded file is git-ignored.
 
 Releases are built by GitHub Actions ([release.yml](.github/workflows/release.yml)): set the same
 version in `pyproject.toml` and `gilzacode/__init__.py`, then push a tag `v<version>`. The workflow
-tests, builds and attaches `GilzaCode-windows-x64.zip` to the release.
+tests, builds and attaches `GilzaCode-windows-x64.zip` to the release. It builds the Linux package
+in an Ubuntu 22.04 container, installs it on Ubuntu 22.04, 24.04, 26.04 and the latest release and
+checks the window on each, then attaches `GilzaCode-linux-x64.tar.gz`.
 
 Set `GILZACODE_DEVTOOLS=1` to open the window with developer tools, and `GILZACODE_HOME` to use a
 data folder other than `~\.gilzacode`.
@@ -290,8 +323,8 @@ data folder other than `~\.gilzacode`.
 | `gilzacode/` | The window, the local server, the LaTeX, PDF, Git and terminal backends, the MCP bridge |
 | `gilzacode/cloud/` | Cloud sync: engine, scanner, providers |
 | `gui/` | The interface (React and Vite) |
-| `packaging/`, `build_exe.ps1` | The Windows build |
-| `install.ps1`, `uninstall.ps1` | Per-user installer and uninstaller |
+| `packaging/`, `build_exe.ps1`, `build_exe.sh` | The Windows and Linux builds |
+| `install.ps1`, `uninstall.ps1`, `install.sh`, `uninstall.sh` | Per-user installers and uninstallers |
 | `tests/` | Backend tests |
 
 ---

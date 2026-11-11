@@ -72,8 +72,20 @@ async def test_only_web_links_are_opened(client, monkeypatch, url):
 
 
 async def test_web_links_are_opened(client, monkeypatch):
+    monkeypatch.setattr(sys, "platform", "win32")
     opened = []
     monkeypatch.setattr("webbrowser.open", lambda url, *a, **k: opened.append(url) or True)
+    data = await (await client.post("/api/system/open-url", json={"url": "https://example.com"})).json()
+    assert data == {"opened": True} and opened == ["https://example.com"]
+
+
+async def test_web_links_open_through_the_desktop_on_linux(client, monkeypatch):
+    """Not `webbrowser`, which would hand a packaged build's library path to the browser."""
+    from gilzacode import desktop
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr("webbrowser.open", lambda *a, **k: pytest.fail("webbrowser must not be used on Linux"))
+    opened = []
+    monkeypatch.setattr(desktop, "open_url", lambda url: opened.append(url) or True)
     data = await (await client.post("/api/system/open-url", json={"url": "https://example.com"})).json()
     assert data == {"opened": True} and opened == ["https://example.com"]
 

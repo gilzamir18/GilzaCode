@@ -108,9 +108,19 @@ def spawn_detached(command: list[str]) -> subprocess.Popen:
     implicit ``SetConsoleCtrlHandler(NULL, TRUE)``) and every process it starts
     inherits that, so after a restart Ctrl+C would stop working in the integrated
     terminal, and in Claude Code running there (found in GilzaBots).
+
+    On Linux the child gets a session of its own, and the environment as it was
+    before this run set QtWebEngine's graphics variables (`qt.pristine_environment`)
+    and before a packaged build's bootloader set its library path
+    (`subprocess_utils.host_environment`): the new bootloader sets its own.
     """
-    return subprocess.Popen(command, close_fds=True, cwd=os.getcwd(),
-                            creationflags=getattr(subprocess, "DETACHED_PROCESS", 0x00000008))
+    if sys.platform == "win32":
+        return subprocess.Popen(command, close_fds=True, cwd=os.getcwd(),
+                                creationflags=getattr(subprocess, "DETACHED_PROCESS", 0x00000008))
+    from gilzacode.subprocess_utils import host_environment
+    from gilzacode.window.qt import pristine_environment
+    return subprocess.Popen(command, close_fds=True, cwd=os.getcwd(), start_new_session=True,
+                            env=pristine_environment(host_environment()))
 
 
 def schedule_restart(delay: float = 0.3) -> None:
@@ -124,12 +134,52 @@ def schedule_restart(delay: float = 0.3) -> None:
     threading.Thread(target=_exit, daemon=True).start()
 
 
+def size_for_screen(screen_width: int, screen_height: int) -> tuple[int, int]:
+    """The window's first size on a screen of the given size: 80%, at least 900 x 600."""
+    return max(900, int(screen_width * 0.8)), max(600, int(screen_height * 0.8))
+
+
 def _window_size(webview) -> tuple[int, int]:
     try:
         primary = webview.screens[0]
-        return max(900, int(primary.width * 0.8)), max(600, int(primary.height * 0.8))
+        return size_for_screen(primary.width, primary.height)
     except Exception:
         return 1280, 800
+
+
+def window_icon() -> str | None:
+    """The window icon on Linux (Windows takes it from the executable)."""
+    icon = Path(__file__).resolve().parent / "window" / "GilzaCode.png"
+    return str(icon) if icon.is_file() else None
+
+
+def _run_qt_window(server: BackgroundServer) -> int:
+    """The Linux window: pywebview's Qt backend with QtWebEngine (`window.qt`)."""
+    from gilzacode.window import qt
+
+    # Asked for Qt, pywebview would silently fall back to GTK (WebKitGTK).
+    qt.require_runtime()
+    graphics = qt.apply_environment()
+    print(f"[GilzaCode] QtWebEngine: GPU {graphics['gpu']} "
+          f"({qt.CHROMIUM_FLAGS_VAR}={graphics['chromium_flags']!r}, "
+          f"{qt.QUICK_BACKEND_VAR}={graphics['qt_quick_backend']!r})", flush=True)
+    import webview
+
+    webview.settings["ALLOW_DOWNLOADS"] = True
+    # Not `webview.screens` (as on Windows): before `webview.start` it initialises
+    # pywebview without a backend, which on Linux tries GTK first and imports the
+    # Qt backend early enough to fix its browser profile in ~/.pywebview. The
+    # window is sized from Qt's own screen in `before_show` instead.
+    window = webview.create_window(
+        title="GilzaCode", url=server.url, width=1280, height=800,
+        resizable=True, text_select=True, zoomable=True, background_color=WINDOW_BACKGROUND,
+    )
+    qt.install_handlers(window, restart=lambda: schedule_restart(0.2), fit=size_for_screen)
+    storage = gilzacode_home() / "webview"
+    storage.mkdir(parents=True, exist_ok=True)
+    webview.start(gui="qt", debug=bool(os.environ.get("GILZACODE_DEVTOOLS")), private_mode=False,
+                  storage_path=str(storage), icon=window_icon())
+    return 0
 
 
 def run(host: str = "127.0.0.1", port: int | None = None, *, browser: bool = False) -> int:
@@ -140,12 +190,18 @@ def run(host: str = "127.0.0.1", port: int | None = None, *, browser: bool = Fal
     print(f"[GilzaCode] serving {server.url}", flush=True)
     try:
         if browser:
-            import webbrowser
-            webbrowser.open(server.url)
+            if sys.platform.startswith("linux"):
+                from gilzacode import desktop
+                desktop.open_url(server.url)
+            else:
+                import webbrowser
+                webbrowser.open(server.url)
             threading.Event().wait()
             return 0
+        if sys.platform.startswith("linux"):
+            return _run_qt_window(server)
         if sys.platform != "win32":
-            raise SystemExit("The GilzaCode window is implemented for Windows only; use --browser.")
+            raise SystemExit("The GilzaCode window is implemented for Windows and Linux only; use --browser.")
         from gilzacode.window import webview2
 
         # A missing runtime would silently give MSHTML (the IE engine).

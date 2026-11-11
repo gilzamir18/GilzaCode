@@ -3,7 +3,7 @@ import subprocess
 import sys
 
 from .external_tools import executable_name, find_tool, install_executable_from_archive
-from .subprocess_utils import utf8_text_kwargs
+from .subprocess_utils import host_environment, utf8_text_kwargs
 
 
 PANDOC_VERSION = "3.10"
@@ -122,6 +122,7 @@ def export_tex_to_docx(project_path: str, tex_file_path: str, output_path: str =
         cwd=os.path.dirname(tex_abs),
         capture_output=True,
         timeout=120,
+        env=host_environment(),
         **utf8_text_kwargs(),
     )
     log = (result.stdout or "") + ("\n" if result.stdout and result.stderr else "") + (result.stderr or "")

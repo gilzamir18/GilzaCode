@@ -15,7 +15,7 @@ import subprocess
 from dataclasses import dataclass
 
 from gilzacode.files import is_within, normalize_rel
-from gilzacode.subprocess_utils import utf8_text_kwargs
+from gilzacode.subprocess_utils import host_environment, utf8_text_kwargs
 
 #: Temporary files of partial LaTeX compiles; never shown as changes.
 HIDDEN_ARTIFACT_PREFIXES = ("gilzacode_partial_",)
@@ -34,7 +34,8 @@ class GitContext:
 
     def run(self, *args: str, text: bool = True, check: bool = False) -> subprocess.CompletedProcess:
         kwargs = utf8_text_kwargs() if text else {}
-        return subprocess.run(["git", *args], cwd=self.repo_root, capture_output=True, check=check, **kwargs)
+        return subprocess.run(["git", *args], cwd=self.repo_root, capture_output=True, check=check,
+                              env=host_environment(), **kwargs)
 
 
 def resolve(project_path: str, git_root_path: str | None = None, shadow: bool = False) -> GitContext:

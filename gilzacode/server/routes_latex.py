@@ -35,6 +35,23 @@ EXCLUSIVE_WORK_PATHS.update({"/api/latex/compile", "/api/latex/compile-pdf-sourc
 COMPILE_DEBUG_VERSION = "gilzacode-1"
 TECTONIC_URL_WINDOWS = ("https://github.com/tectonic-typesetting/tectonic/releases/download/"
                         "tectonic%400.15.0/tectonic-0.15.0-x86_64-pc-windows-msvc.zip")
+#: The statically linked (musl) build: it runs on every Linux release, unlike the
+#: glibc one, which needs the build machine's libraries (build_exe.sh bundles the same).
+TECTONIC_URL_LINUX = ("https://github.com/tectonic-typesetting/tectonic/releases/download/"
+                      "tectonic%400.15.0/tectonic-0.15.0-x86_64-unknown-linux-musl.tar.gz")
+
+
+def tectonic_download(platform: str | None = None, machine: str | None = None) -> tuple[str, str]:
+    """``(url, archive name)`` of the Tectonic build for this system, or `ValueError`."""
+    import platform as _platform
+
+    platform = sys.platform if platform is None else platform
+    machine = (_platform.machine() if machine is None else machine).lower()
+    if platform == "win32":
+        return TECTONIC_URL_WINDOWS, "tectonic.zip"
+    if platform.startswith("linux") and machine in ("x86_64", "amd64"):
+        return TECTONIC_URL_LINUX, "tectonic.tar.gz"
+    raise ValueError(f"Installing Tectonic is implemented for Windows and Linux x64 only ({platform}, {machine}).")
 
 
 @dataclass
@@ -491,10 +508,12 @@ def _download(url: str, filename: str, install) -> str:
 async def install_tectonic(_request: web.Request) -> web.Response:
     """Download Tectonic into ``<gilzacode home>/bin``."""
     from gilzacode.external_tools import executable_name, install_executable_from_archive
-    if sys.platform != "win32":
-        return error(400, "Installing Tectonic is implemented for Windows only.")
     try:
-        path = await asyncio.to_thread(_download, TECTONIC_URL_WINDOWS, "tectonic.zip",
+        url, archive_name = tectonic_download()
+    except ValueError as exc:
+        return error(400, str(exc))
+    try:
+        path = await asyncio.to_thread(_download, url, archive_name,
                                        lambda a: install_executable_from_archive(a, executable_name("tectonic")))
     except Exception as exc:  # network and archive errors
         return error(500, str(exc))

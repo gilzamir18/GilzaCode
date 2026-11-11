@@ -27,6 +27,7 @@ import hashlib
 import json
 import os
 import secrets
+import sys
 import threading
 import time
 import urllib.error
@@ -261,6 +262,11 @@ def open_in_browser(url: str) -> bool:
     the URL for the user to open manually instead of leaving them staring at a
     dialog that never proceeds.
     """
+    if sys.platform.startswith("linux"):
+        # Not `webbrowser`: in a packaged build it would hand the browser the
+        # bundle's library path (gilzacode.desktop).
+        from gilzacode import desktop
+        return desktop.open_url(url)
     try:
         return bool(webbrowser.open(url, new=1, autoraise=True))
     except Exception:

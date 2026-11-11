@@ -185,14 +185,19 @@ def test_the_panel_starts_claude_with_the_bridge(isolated_home, monkeypatch, tmp
     assert env["GILZACODE_PROJECT"] == str(tmp_path) and "CLAUDECODE" not in env
 
 
-def test_a_packaged_build_starts_the_bundled_bridge(isolated_home, monkeypatch, tmp_path):
+@pytest.mark.parametrize("platform, window, bridge", [
+    ("win32", "GilzaCode.exe", "gilzacode-mcp.exe"),
+    ("linux", "GilzaCode", "gilzacode-mcp"),
+])
+def test_a_packaged_build_starts_the_bundled_bridge(isolated_home, monkeypatch, tmp_path, platform, window, bridge):
     from gilzacode import claude_cli
     exe_dir = tmp_path / "GilzaCode"
     exe_dir.mkdir()
+    monkeypatch.setattr(sys, "platform", platform)
     monkeypatch.setattr(sys, "frozen", True, raising=False)
-    monkeypatch.setattr(sys, "executable", str(exe_dir / "GilzaCode.exe"))
+    monkeypatch.setattr(sys, "executable", str(exe_dir / window))
     with pytest.raises(claude_cli.ClaudeCliError) as missing:
         claude_cli.bridge_command()
     assert "Reinstall" in str(missing.value)
-    (exe_dir / "gilzacode-mcp.exe").write_bytes(b"MZ")
-    assert claude_cli.bridge_command() == (str(exe_dir / "gilzacode-mcp.exe"), [])
+    (exe_dir / bridge).write_bytes(b"MZ")
+    assert claude_cli.bridge_command() == (str(exe_dir / bridge), [])

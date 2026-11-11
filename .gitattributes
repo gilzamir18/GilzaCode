@@ -1,0 +1,2 @@
+# Shell scripts run on Linux (build_exe.sh, install.sh, uninstall.sh): never CRLF.
+*.sh text eol=lf

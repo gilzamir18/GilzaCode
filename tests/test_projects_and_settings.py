@@ -36,7 +36,10 @@ async def test_create_import_list_rename_delete(client, tmp_path, project):
 
 async def test_the_same_folder_cannot_be_two_projects(client, project):
     await client.post("/api/projects/import", json={"project_path": str(project)})
-    again = await client.post("/api/projects/import", json={"project_path": str(project).upper()})
+    # Windows paths are case-insensitive, so another spelling is the same folder;
+    # on Linux it would be a different folder.
+    same = str(project).upper() if os.name == "nt" else str(project)
+    again = await client.post("/api/projects/import", json={"project_path": same})
     assert again.status == 400
     assert "already the project" in (await again.json())["error"]
 

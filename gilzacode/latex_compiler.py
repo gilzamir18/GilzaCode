@@ -16,6 +16,8 @@ def get_tectonic_path():
 
 import re
 
+from .subprocess_utils import host_environment
+
 
 LATEX_ERROR_LOCATION_RE = re.compile(
     r'(?im)^error:\s+(.+?\.tex):(\d+):\s+(.+?)\s*$'
@@ -405,6 +407,7 @@ def _run_bibliography_tool_if_needed(main_dir: str, preview_stem: str, preview_c
         [tool, preview_stem],
         cwd=main_dir,
         capture_output=True,
+        env=host_environment(),
         encoding="utf-8",
         errors="replace",
     )
@@ -608,6 +611,7 @@ def compile_latex_partial(tex_content: str, file_path: str, main_file: str, proj
                 tectonic_args,
                 cwd=main_dir,
                 capture_output=True,
+                env=host_environment(),
                 encoding="utf-8",
                 errors="replace",
             )
@@ -754,6 +758,7 @@ def compile_latex(tex_content: str, file_path: str = None, main_file: str = "", 
                 tectonic_args,
                 cwd=project_dir,
                 capture_output=True,
+                env=host_environment(),
                 encoding="utf-8",
                 errors="replace"
             )
@@ -856,6 +861,7 @@ def compile_latex(tex_content: str, file_path: str = None, main_file: str = "", 
             tectonic_args,
             cwd=temp_dir,
             capture_output=True,
+            env=host_environment(),
             encoding="utf-8",
             errors="replace"
         )
@@ -1270,6 +1276,7 @@ def render_graphic_to_svg(graphic_source: str, project_path: str = "", preamble:
             [tectonic_cmd, tex_path],
             cwd=temp_dir,
             capture_output=True,
+            env=host_environment(),
             encoding="utf-8",
             errors="replace",
             timeout=60,

@@ -333,6 +333,8 @@ def test_pdf_forbidding_annotations_is_rejected(tmp_path):
         add_annotation(str(path), page=1, kind="highlight", rects=[[0.1, 0.1, 0.2, 0.2]])
 
 
+@pytest.mark.skipif(getattr(os, "geteuid", lambda: 1)() == 0,
+                    reason="root writes read-only files anyway (the Linux release build runs as root in a container)")
 def test_read_only_file_is_rejected(sample_pdf):
     os.chmod(sample_pdf, 0o444)
     try:

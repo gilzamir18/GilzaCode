@@ -1,10 +1,19 @@
-# Builds the Windows package and attaches it to a GitHub release.
+# Builds the Windows and Linux packages and attaches them to a GitHub release.
 #
 # Publishing a version:
 #   1. set the same version in pyproject.toml and gilzacode/__init__.py;
 #   2. git tag v<version> && git push origin v<version>
 # The release is created if it does not exist yet, and the zip is attached as
 # GilzaCode-windows-x64.zip, the asset install.ps1 downloads.
+#
+# Linux (jobs linux, linux-smoke, linux-release; the windows job is unchanged):
+# the package is built in an ubuntu:22.04 container, because PyInstaller copies
+# the build machine's libraries and they need its glibc or a newer one. It is
+# then installed with install.sh, as a normal user, on every supported Ubuntu
+# (22.04 to the current release) and its window opened under Xvfb and checked
+# (scripts/smoke_linux_window.py). Only then is GilzaCode-linux-x64.tar.gz, the
+# asset install.sh downloads, attached; after the windows job, which creates
+# the release.
 #
 # "Run workflow" (workflow_dispatch) rebuilds an existing tag, for instance to
 # attach the zip to a release that was created by hand.
@@ -115,3 +124,163 @@ jobs:
             gh release create $env:TAG dist/GilzaCode-windows-x64.zip --title "GilzaCode $env:TAG" --generate-notes --verify-tag
           }
           if ($LASTEXITCODE -ne 0) { throw "Publishing the release failed." }
+
+  linux:
+    runs-on: ubuntu-latest
+    # The oldest supported release: the bundle runs on its glibc (2.35) or newer.
+    container: ubuntu:22.04
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      DEBIAN_FRONTEND: noninteractive
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # PyInstaller bundles a library only if the build machine has it, and only
+      # warns otherwise. The nine X11 client libraries Qt's xcb platform plugin
+      # links are not on a stock image; without them in the bundle the window
+      # aborts on a desktop that lacks them (GilzaBots shipped that way).
+      # build_exe.sh refuses a bundle that still lacks any of them.
+      - name: Install the build tools and the libraries the Linux bundle must carry
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            git curl ca-certificates xz-utils binutils \
+            libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 \
+            libxcb-shape0 libxcb-util1 libxcb-xkb1 libxkbcommon-x11-0 \
+            libxcomposite1 libxdamage1 libxrandr2 libxtst6 libxkbfile1 \
+            libgl1 libegl1 libfontconfig1 libdbus-1-3 libnss3 libxkbcommon0 libglib2.0-0 libespeak-ng1
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Check that the tag matches the package version
+        run: |
+          pyproject=$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml)
+          module=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' gilzacode/__init__.py)
+          tag_version="${TAG#v}"
+          if [[ "$pyproject" != "$tag_version" || "$module" != "$tag_version" ]]; then
+            echo "::error::Tag $TAG does not match pyproject.toml ($pyproject) and gilzacode/__init__.py ($module)."
+            exit 1
+          fi
+          echo "Version $tag_version"
+
+      - name: Check the Google OAuth client secrets
+        env:
+          GILZACODE_GDRIVE_CLIENT_ID: ${{ secrets.GILZACODE_GDRIVE_CLIENT_ID }}
+          GILZACODE_GDRIVE_CLIENT_SECRET: ${{ secrets.GILZACODE_GDRIVE_CLIENT_SECRET }}
+        run: |
+          if [[ -z "$GILZACODE_GDRIVE_CLIENT_ID" || -z "$GILZACODE_GDRIVE_CLIENT_SECRET" ]]; then
+            echo "::error::Set the repository secrets GILZACODE_GDRIVE_CLIENT_ID and GILZACODE_GDRIVE_CLIENT_SECRET (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+
+      # A self-contained CPython (python-build-standalone): the system Python of
+      # 22.04 is 3.10, and this one carries its own OpenSSL.
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Python 3.12 environment
+        run: |
+          uv python install 3.12
+          uv venv --seed -p 3.12 .venv
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: gui/package-lock.json
+
+      - name: Install
+        run: |
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -e ".[dev]"
+          (cd gui && npm ci --no-audit --no-fund)
+
+      - name: Test the backend
+        run: .venv/bin/python -m pytest -q
+
+      - name: Test the interface
+        working-directory: gui
+        run: |
+          npm run test:wysiwyg
+          npx eslint src
+
+      - name: Build the Linux package
+        env:
+          GILZACODE_GDRIVE_CLIENT_ID: ${{ secrets.GILZACODE_GDRIVE_CLIENT_ID }}
+          GILZACODE_GDRIVE_CLIENT_SECRET: ${{ secrets.GILZACODE_GDRIVE_CLIENT_SECRET }}
+        run: bash build_exe.sh
+
+      - name: Check the package
+        run: |
+          if [[ -z "$(find dist/GilzaCode -name bundled_google_client.json | head -n 1)" ]]; then
+            echo "::error::The Google OAuth client is not in the package."
+            exit 1
+          fi
+          test -f dist/GilzaCode-linux-x64.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GilzaCode-linux-x64
+          path: dist/GilzaCode-linux-x64.tar.gz
+          retention-days: 7
+
+  linux-smoke:
+    needs: linux
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["ubuntu:22.04", "ubuntu:24.04", "ubuntu:26.04", "ubuntu:rolling"]
+    # The window runs as a normal user, with Chromium's sandbox on, as users run it.
+    container: ${{ matrix.image }}
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      DEBIAN_FRONTEND: noninteractive
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # What every Ubuntu desktop has (the graphics stack and the libraries
+      # PyInstaller leaves to the host), plus Xvfb and Python for the check.
+      - name: Install a desktop's base libraries and Xvfb
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates python3 xvfb xauth fonts-dejavu-core \
+            libgl1 libegl1 libgl1-mesa-dri libglx-mesa0 libegl-mesa0 libgbm1 \
+            libwayland-client0 libwayland-server0 libwayland-cursor0 libwayland-egl1 \
+            libxcb1 libx11-xcb1 libxkbcommon0 libfontconfig1 libdbus-1-3 libglib2.0-0
+          useradd -m -s /bin/bash tester
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: GilzaCode-linux-x64
+
+      - name: Install with install.sh and open the window (${{ matrix.image }})
+        run: |
+          chmod -R a+rX "$GITHUB_WORKSPACE"
+          su tester -c "bash '$GITHUB_WORKSPACE/install.sh' --source '$GITHUB_WORKSPACE/GilzaCode-linux-x64.tar.gz' && \
+            xvfb-run -a -s '-screen 0 1920x1080x24' python3 '$GITHUB_WORKSPACE/scripts/smoke_linux_window.py' -- \
+              ~/.local/share/GilzaCode/GilzaCode/GilzaCode"
+
+  linux-release:
+    # After the windows job, which creates the release when it does not exist.
+    needs: [windows, linux-smoke]
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: GilzaCode-linux-x64
+
+      - name: Attach the package to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" GilzaCode-linux-x64.tar.gz --clobber --repo "$GITHUB_REPOSITORY"

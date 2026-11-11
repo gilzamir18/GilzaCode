@@ -38,17 +38,38 @@ class ClaudeCliError(RuntimeError):
         self.kind = kind
 
 
+def installer_locations() -> list[str]:
+    """Where Claude Code's own installer puts `claude`, searched after PATH.
+
+    Linux only. A program started from the desktop menu gets the login
+    session's PATH, not the shell's: the native installer's ``~/.local/bin`` is
+    missing from it until the next login (Ubuntu's ``~/.profile`` adds it only
+    when the folder existed at login), so `claude` works in a terminal while the
+    window cannot find it. Windows: none (the installer puts it on PATH).
+    """
+    import sys
+
+    if not sys.platform.startswith("linux"):
+        return []
+    return [os.path.join(os.path.expanduser("~"), ".local", "bin", "claude")]
+
+
 def find_claude() -> str:
     """The `claude` executable, or `ClaudeCliError` (kind ``not_installed``)."""
     configured = os.environ.get("GILZACODE_CLAUDE", "").strip()
     found = configured if configured and os.path.isfile(configured) else shutil.which("claude")
+    if not found:
+        found = next((path for path in installer_locations() if os.path.isfile(path) and os.access(path, os.X_OK)),
+                     None)
     if not found:
         raise ClaudeCliError(f"Claude Code (`claude`) was not found. {INSTALL_HINT}", kind="not_installed")
     return found
 
 
 def child_environment(base: dict | None = None) -> dict:
-    env = dict(os.environ if base is None else base)
+    from gilzacode.subprocess_utils import host_environment
+
+    env = host_environment(base)
     for name in NESTED_SESSION_MARKERS:
         env.pop(name, None)
     return env
@@ -133,12 +154,15 @@ PRE_ALLOWED_TOOLS = ("get_editor_state", "get_pdf_view", "get_problems", "list_p
 
 
 def bridge_command() -> tuple[str, list[str]]:
-    """How to start the bridge: the bundled ``gilzacode-mcp.exe`` in a packaged
-    build (a console executable next to ``GilzaCode.exe``), else ``python -m``."""
+    """How to start the bridge: the bundled ``gilzacode-mcp`` (``.exe`` on
+    Windows) in a packaged build (a console executable next to the window's),
+    else ``python -m``."""
     import sys
 
+    from gilzacode.external_tools import executable_name
+
     if getattr(sys, "frozen", False):
-        exe = os.path.join(os.path.dirname(sys.executable), "gilzacode-mcp.exe")
+        exe = os.path.join(os.path.dirname(sys.executable), executable_name("gilzacode-mcp"))
         if not os.path.isfile(exe):
             raise ClaudeCliError(f"The GilzaCode MCP bridge is missing from the installation ({exe}). "
                                  "Reinstall GilzaCode.", kind="not_installed")

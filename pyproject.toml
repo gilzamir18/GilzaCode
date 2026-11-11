@@ -15,6 +15,16 @@ dependencies = [
     "numpy>=1.26",
     "pywebview>=6.2; sys_platform == 'win32'",
     "pywinpty>=3.1; sys_platform == 'win32'",
+    # Linux: the window is pywebview's Qt backend with QtWebEngine (PROJECT_DESIGN.md §5).
+    # The range is GilzaBots' verified one: Qt 6.8 (Chromium 122) cannot open a
+    # PDF (pdf.js calls URL.parse), and the four packages must share one Qt minor,
+    # which PyQt6-WebEngine does not enforce on PyQt6-Qt6.
+    "pywebview>=6.2; sys_platform == 'linux'",
+    "PyQt6>=6.11.0,<6.12; sys_platform == 'linux'",
+    "PyQt6-Qt6>=6.11.2,<6.12; sys_platform == 'linux'",
+    "PyQt6-WebEngine>=6.11.0,<6.12; sys_platform == 'linux'",
+    "PyQt6-WebEngine-Qt6>=6.11.2,<6.12; sys_platform == 'linux'",
+    "qtpy>=2.4; sys_platform == 'linux'",
 ]
 
 [project.optional-dependencies]
@@ -28,7 +38,7 @@ gilzacode-mcp = "gilzacode.mcp_bridge:main"
 include = ["gilzacode*"]
 
 [tool.setuptools.package-data]
-gilzacode = ["static/**/*"]
+gilzacode = ["static/**/*", "window/GilzaCode.png"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

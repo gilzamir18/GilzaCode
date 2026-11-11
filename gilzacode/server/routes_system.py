@@ -17,10 +17,13 @@ routes = web.RouteTableDef()
 
 
 def _clipboard():
-    if sys.platform != "win32":
-        raise OSError("The clipboard is implemented for Windows only.")
-    from gilzacode import win_clipboard
-    return win_clipboard
+    if sys.platform == "win32":
+        from gilzacode import win_clipboard
+        return win_clipboard
+    if sys.platform.startswith("linux"):
+        from gilzacode import qt_clipboard
+        return qt_clipboard
+    raise OSError("The clipboard is implemented for Windows and Linux only.")
 
 
 @routes.get("/api/clipboard/read")
@@ -65,7 +68,11 @@ async def open_url(request: web.Request) -> web.Response:
     if urlparse(url).scheme.lower() not in {"http", "https"}:
         return error(400, "Only http and https URLs can be opened.")
     try:
-        opened = await asyncio.to_thread(webbrowser.open, url, 1, True)
+        if sys.platform.startswith("linux"):
+            from gilzacode import desktop
+            opened = await asyncio.to_thread(desktop.open_url, url)
+        else:
+            opened = await asyncio.to_thread(webbrowser.open, url, 1, True)
     except Exception as exc:  # webbrowser raises assorted errors per platform
         return web.json_response({"opened": False, "error": str(exc)})
     return web.json_response({"opened": bool(opened)})
