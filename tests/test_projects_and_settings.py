@@ -34,6 +34,22 @@ async def test_create_import_list_rename_delete(client, tmp_path, project):
     assert not (tmp_path / "thesis").exists()
 
 
+async def test_a_project_whose_folder_is_gone_can_still_be_removed(client, tmp_path):
+    # The explorer shows such a project as "Not found" and offers removal from
+    # that row, since it can never become the active project.
+    folder = tmp_path / "gone"
+    folder.mkdir()
+    created = await (await client.post("/api/projects/import", json={"project_path": str(folder)})).json()
+    folder.rmdir()
+    listed = await (await client.get("/api/projects/list")).json()
+    assert [p["exists"] for p in listed["projects"]] == [False]
+
+    response = await client.post("/api/projects/delete", json={"name": created["name"], "delete_dir": False})
+
+    assert response.status == 200, await response.text()
+    assert (await (await client.get("/api/projects/list")).json())["projects"] == []
+
+
 async def test_the_same_folder_cannot_be_two_projects(client, project):
     await client.post("/api/projects/import", json={"project_path": str(project)})
     # Windows paths are case-insensitive, so another spelling is the same folder;

@@ -2585,6 +2585,7 @@ export default function App() {
 
       <DeleteProjectModal
         projectToDelete={projectToDelete}
+        folderMissing={projects.find(p => p.name === projectToDelete)?.exists === false}
         cloudLink={deleteCloudLink}
         onCancel={() => { setProjectToDelete(null); setDeleteCloudLink(null); }}
         onConfirm={confirmDeleteProject}

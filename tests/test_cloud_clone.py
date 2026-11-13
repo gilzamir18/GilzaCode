@@ -280,6 +280,52 @@ async def test_the_endpoint_marks_a_project_this_machine_already_has(client, tmp
     assert payload["projects"][0]["local"]["project_path"] == source["path"]
 
 
+async def test_the_endpoint_marks_a_project_whose_remote_folder_is_implicit(client, tmp_path, remote_base):
+    # Turning sync on from the panel leaves remote_folder empty: the engine
+    # then mirrors to a folder named after the project directory. Only a clone
+    # writes the name down, so this is how most projects on the source machine
+    # look, and they must still be recognised as already here.
+    project_dir = tmp_path / "machine-a" / "notes"
+    project_dir.mkdir(parents=True)
+    write(str(project_dir), "main.tex", "\\section{Intro}")
+    save_settings(str(project_dir), CloudSettings(
+        enabled=True,
+        provider="local_folder",
+        provider_config={"base_dir": remote_base},
+    ))
+    outcome = service.sync_project("notes", str(project_dir), provider=LocalFolderProvider(remote_base))
+    assert outcome.report.ok, outcome.error
+    projects.add("notes", str(project_dir), must_exist=True)
+
+    response = await client.post("/api/cloud/remote-projects", json={
+        "provider": "local_folder",
+        "config": {"base_dir": remote_base},
+    })
+
+    payload = await response.json()
+    assert response.status == 200, payload
+    assert [p["name"] for p in payload["projects"]] == ["notes"]
+    assert payload["projects"][0]["local"]["project_path"] == str(project_dir)
+
+
+async def test_the_endpoint_does_not_mark_a_project_that_never_turned_sync_on(client, tmp_path, remote_base):
+    # A registered project with the same folder name but no cloud settings is
+    # not a mirror: it must not hide the remote project from the download list.
+    source_machine(tmp_path, remote_base)
+    unrelated = tmp_path / "machine-b" / "thesis"
+    unrelated.mkdir(parents=True)
+    projects.add("thesis", str(unrelated), must_exist=True)
+
+    response = await client.post("/api/cloud/remote-projects", json={
+        "provider": "local_folder",
+        "config": {"base_dir": remote_base},
+    })
+
+    payload = await response.json()
+    assert response.status == 200, payload
+    assert payload["projects"][0]["local"] is None
+
+
 async def test_the_endpoint_downloads_and_registers_the_project(client, tmp_path, remote_base):
     source_machine(tmp_path, remote_base)
     parent = tmp_path / "machine-b" / "projects"

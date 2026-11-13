@@ -375,9 +375,12 @@ def _mirrored_here(provider_id: str) -> dict[str, dict]:
         if not project.project_path or not os.path.isdir(project.project_path):
             continue
         cloud = load_state(project.project_path).settings
-        if cloud.provider != provider_id or not cloud.remote_folder:
+        if cloud.provider != provider_id:
             continue
-        mirrored[cloud.remote_folder] = {
+        # An empty remote_folder means "named after the project folder", as the
+        # engine resolves it; only a clone writes the name down explicitly.
+        remote_folder = cloud.remote_folder or os.path.basename(os.path.abspath(project.project_path))
+        mirrored[remote_folder] = {
             "name": project.name,
             "project_name": project.project_name,
             "project_path": project.project_path,

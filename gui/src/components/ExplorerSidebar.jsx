@@ -181,9 +181,26 @@ export default function ExplorerSidebar({
                           if (!isActive) e.currentTarget.style.background = 'transparent';
                         }}
                       >
-                        <div style={{ fontSize: '12px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '5px' }} className="truncate">
+                        <div style={{ fontSize: '12px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '5px' }}>
                           {isMissing && <AlertTriangle size={11} style={{ color: 'var(--vscode-fg-gold)', flexShrink: 0 }} />}
-                          {p.project_name || p.name}
+                          <span className="truncate" style={{ flex: 1, minWidth: 0 }}>{p.project_name || p.name}</span>
+                          {/* A project whose folder is gone can never become the active
+                              one, so the toolbar's remove button never reaches it. */}
+                          {isMissing && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsDropdownOpen(false);
+                                handleDeleteProject(p.name);
+                              }}
+                              className="vscode-sidebar-action-btn"
+                              style={{ padding: '2px', flexShrink: 0 }}
+                              title={t('explorerSidebar.removeMissingProject', 'Remove from the project list')}
+                              aria-label={t('explorerSidebar.removeMissingProject', 'Remove from the project list')}
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
                         </div>
                         <div style={{ fontSize: '11px', color: isMissing ? 'var(--vscode-fg-gold)' : (isActive ? 'var(--vscode-list-activeSelectionDescriptionFg, rgba(255,255,255,0.7))' : 'var(--vscode-text-muted)') }} className="truncate">
                           {isMissing ? t('explorerSidebar.projectPathMissing', 'Not found: {{path}}', { path: p.project_path }) : p.project_path}

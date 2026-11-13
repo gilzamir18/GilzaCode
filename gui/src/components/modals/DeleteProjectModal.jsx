@@ -5,7 +5,9 @@ import { AlertTriangle } from 'lucide-react';
 // `cloudLink` comes from /api/cloud/link: when the project has a copy in the
 // cloud, the dialog offers to delete that too. Off by default — removing a
 // project from this computer is not a reason to remove it everywhere.
-export default function DeleteProjectModal({ projectToDelete, cloudLink, onCancel, onConfirm }) {
+// `folderMissing`: the project's folder no longer exists, so there is no
+// directory to offer deleting; removing it only takes it off the list.
+export default function DeleteProjectModal({ projectToDelete, folderMissing, cloudLink, onCancel, onConfirm }) {
   const { t } = useTranslation();
   const [deleteDir, setDeleteDir] = useState(false);
   const [deleteCloud, setDeleteCloud] = useState(false);
@@ -37,15 +39,17 @@ export default function DeleteProjectModal({ projectToDelete, cloudLink, onCance
           />
         </p>
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--vscode-descriptionForeground, #a0a0c0)', marginBottom: '24px', cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            checked={deleteDir}
-            onChange={(e) => setDeleteDir(e.target.checked)}
-            style={{ cursor: 'pointer' }}
-          />
-          {t('deleteProjectModal.deleteDir', 'Also delete the directory associated with the project')}
-        </label>
+        {!folderMissing && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--vscode-descriptionForeground, #a0a0c0)', marginBottom: '24px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={deleteDir}
+              onChange={(e) => setDeleteDir(e.target.checked)}
+              style={{ cursor: 'pointer' }}
+            />
+            {t('deleteProjectModal.deleteDir', 'Also delete the directory associated with the project')}
+          </label>
+        )}
 
         {cloudLink?.linked && (
           <div style={{ marginTop: '-12px', marginBottom: '24px' }}>
@@ -89,7 +93,7 @@ export default function DeleteProjectModal({ projectToDelete, cloudLink, onCance
           </button>
           <button
             onClick={() => {
-              onConfirm(deleteDir, !!cloudLink?.linked && deleteCloud);
+              onConfirm(!folderMissing && deleteDir, !!cloudLink?.linked && deleteCloud);
               setDeleteDir(false);
               setDeleteCloud(false);
             }}

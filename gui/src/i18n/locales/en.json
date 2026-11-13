@@ -144,6 +144,7 @@
     "noProjects": "No projects found",
     "projectPathMissing": "Not found: {{path}}",
     "projectPathMissingHint": "Project folder not found on this machine. Click to fix its path.",
+    "removeMissingProject": "Remove from the project list",
     "downloadFromCloud": "Download project from the cloud"
   },
   "gitSidebar": {
