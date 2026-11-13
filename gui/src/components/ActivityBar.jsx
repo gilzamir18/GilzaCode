@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Bot, Cloud, CloudOff, Files, GitBranch, Settings, LayoutGrid, LayoutTemplate, Terminal, Columns2 } from 'lucide-react';
+import { Bot, Cloud, CloudOff, Files, GitBranch, Search, Settings, LayoutGrid, LayoutTemplate, Terminal, Columns2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   ACTIVITY_BAR_DEFAULT_DENSITY,
@@ -205,6 +205,17 @@ export default function ActivityBar({
           title={t('activityBar.explorer')}
         >
           <Files size={density.iconSize} />
+        </button>
+
+        <button
+          onClick={() => {
+            if (!hasDockedSidebar) setLayoutMode('ide');
+            setActiveSidebarTab(activeSidebarTab === 'search' ? null : 'search');
+          }}
+          className={`vscode-activitybar-btn ${activeSidebarTab === 'search' && hasDockedSidebar ? 'active' : ''}`}
+          title={t('activityBar.search', 'Search in files (Ctrl+Shift+F)')}
+        >
+          <Search size={density.iconSize} />
         </button>
 
         <button

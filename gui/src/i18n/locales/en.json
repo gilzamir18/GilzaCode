@@ -28,7 +28,8 @@
     "monitorsNewEvents": "Monitors: {{count}} new event(s)",
     "connectors": "Connectors (MCP)",
     "claudeCode": "Claude Code (Ctrl+T)",
-    "toggleBottomPanel": "Toggle the bottom panel (terminal)"
+    "toggleBottomPanel": "Toggle the bottom panel (terminal)",
+    "search": "Search in files (Ctrl+Shift+F)"
   },
   "tutorial": {
     "menuTitle": "Tutorial topics",
@@ -146,6 +147,21 @@
     "projectPathMissingHint": "Project folder not found on this machine. Click to fix its path.",
     "removeMissingProject": "Remove from the project list",
     "downloadFromCloud": "Download project from the cloud"
+  },
+  "searchSidebar": {
+    "header": "Search",
+    "refresh": "Search again",
+    "placeholder": "Search in text files",
+    "noProject": "Open a project to search its files",
+    "matchCase": "Match case",
+    "wholeWord": "Match whole word",
+    "regex": "Use regular expression",
+    "searching": "Searching...",
+    "noResults": "No results found.",
+    "summary": "{{matches}} results in {{files}} files",
+    "truncated": "Only the first {{count}} results are shown. Refine the search to see the rest.",
+    "skippedLarge": "{{count}} large files were not searched.",
+    "lineTitle": "Line {{line}}, column {{column}}"
   },
   "gitSidebar": {
     "header": "SOURCE CONTROL",

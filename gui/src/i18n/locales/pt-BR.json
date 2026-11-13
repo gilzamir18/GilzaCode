@@ -28,7 +28,8 @@
     "monitorsNewEvents": "Monitores: {{count}} evento(s) novo(s)",
     "connectors": "Conectores (MCP)",
     "claudeCode": "Claude Code (Ctrl+T)",
-    "toggleBottomPanel": "Mostrar/ocultar o painel inferior (terminal)"
+    "toggleBottomPanel": "Mostrar/ocultar o painel inferior (terminal)",
+    "search": "Buscar nos arquivos (Ctrl+Shift+F)"
   },
   "tutorial": {
     "menuTitle": "Tópicos do tutorial",
@@ -146,6 +147,21 @@
     "projectPathMissingHint": "Pasta do projeto não encontrada nesta máquina. Clique para corrigir o caminho.",
     "removeMissingProject": "Remover da lista de projetos",
     "downloadFromCloud": "Baixar projeto da nuvem"
+  },
+  "searchSidebar": {
+    "header": "Buscar",
+    "refresh": "Buscar novamente",
+    "placeholder": "Buscar em arquivos de texto",
+    "noProject": "Abra um projeto para buscar nos seus arquivos",
+    "matchCase": "Diferenciar maiúsculas e minúsculas",
+    "wholeWord": "Palavra inteira",
+    "regex": "Usar expressão regular",
+    "searching": "Buscando...",
+    "noResults": "Nenhum resultado encontrado.",
+    "summary": "{{matches}} resultados em {{files}} arquivos",
+    "truncated": "Apenas os primeiros {{count}} resultados são mostrados. Refine a busca para ver o restante.",
+    "skippedLarge": "{{count}} arquivos grandes não foram pesquisados.",
+    "lineTitle": "Linha {{line}}, coluna {{column}}"
   },
   "gitSidebar": {
     "header": "SOURCE CONTROL",

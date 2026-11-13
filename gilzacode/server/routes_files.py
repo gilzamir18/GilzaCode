@@ -1,4 +1,4 @@
-"""Project files: tree, read, raw, write, mkdir, copy, import, delete, rename, open.
+"""Project files: tree, search, read, raw, write, mkdir, copy, import, delete, rename, open.
 
 Contracts are GilzaBots' (``/api/files``, ``/api/file/*``) so the reused front-end
 keeps working unchanged. Every path is confined to its project folder; the
@@ -17,10 +17,15 @@ from aiohttp import web
 
 from gilzacode import desktop, settings
 from gilzacode.files import PathOutsideProject, file_tree, normalize_rel, resolve, unique_target
-from gilzacode.server.app import error, read_json
+from gilzacode.server.app import EXCLUSIVE_WORK_PATHS, error, read_json
 from gilzacode.server.routes_cloud import notify_change
+from gilzacode.text_search import InvalidQuery, compile_query, search_project
 
 routes = web.RouteTableDef()
+
+# A search walks and reads the whole project, like the tree; holding the
+# ordering lock means a save sent before it is on disk when it reads.
+EXCLUSIVE_WORK_PATHS.add("/api/files/search")
 
 TRAVERSAL = "Forbidden: Path traversal detected"
 
@@ -40,6 +45,30 @@ async def list_files(request: web.Request) -> web.Response:
     tree = await asyncio.to_thread(file_tree, project_path, show_hidden=show_hidden,
                                    hidden_extensions=settings.hidden_file_extensions())
     return web.json_response({"files": tree})
+
+
+@routes.get("/api/files/search")
+async def search_files(request: web.Request) -> web.Response:
+    """Matches of ``query`` in the project's text files (Markdown, LaTeX, code...)."""
+    project_path = request.query.get("projectPath")
+    if not project_path:
+        return error(400, "projectPath parameter is required")
+    if not os.path.isdir(project_path):
+        return error(404, "Directory not found")
+    try:
+        pattern = compile_query(
+            request.query.get("query", ""),
+            case_sensitive=_truthy(request.query.get("caseSensitive", "false")),
+            whole_word=_truthy(request.query.get("wholeWord", "false")),
+            regex=_truthy(request.query.get("regex", "false")),
+        )
+    except InvalidQuery as exc:
+        return error(400, str(exc), code="invalid_query")
+    result = await asyncio.to_thread(
+        search_project, project_path, pattern,
+        show_hidden=_truthy(request.query.get("showHiddenFiles", "false")),
+        hidden_extensions=settings.hidden_file_extensions())
+    return web.json_response(result.to_json())
 
 
 @routes.get("/api/file/read")

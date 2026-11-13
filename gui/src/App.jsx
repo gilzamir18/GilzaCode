@@ -16,6 +16,7 @@ import {
   joinMergedLogMessage,
 } from './utils/logMerge';
 import { resolveInlineCreatePath } from './utils/inlineCreate';
+import { collectTreePaths, outermostPaths } from './utils/explorerSelection';
 import { markerPathKey, unsavedFilePaths } from './utils/fileMarkers';
 
 // Hooks
@@ -26,6 +27,7 @@ import ActivityBar from './components/ActivityBar';
 import StatusBar from './components/StatusBar';
 import ExplorerSidebar from './components/ExplorerSidebar';
 import GitSidebar from './components/GitSidebar';
+import SearchSidebar from './components/SearchSidebar';
 import EditorPanel from './components/EditorPanel';
 import ClaudePanel from './components/ClaudePanel';
 import {
@@ -229,6 +231,13 @@ export default function App() {
   const [claudePromptRequest, setClaudePromptRequest] = useState(null);
   const claudePromptSeqRef = useRef(0);
   const [activeSidebarTab, setActiveSidebarTab] = useState('explorer');
+  // The Search tab's query, options and last results, kept here so they
+  // survive switching sidebar tabs; the token focuses its field (Ctrl+Shift+F).
+  const [searchState, setSearchState] = useState({
+    query: '', caseSensitive: false, wholeWord: false, regex: false,
+    projectPath: null, response: null, error: '',
+  });
+  const [searchFocusToken, setSearchFocusToken] = useState(0);
   const [contextMenu, setContextMenu] = useState(null);
   const [clipboardNode, setClipboardNode] = useState(null);
   const [jumpToLine, setJumpToLine] = useState(null);
@@ -601,6 +610,15 @@ export default function App() {
         const nextVisible = !isChatVisible;
         setIsChatVisible(nextVisible);
         if (isEditorMaximized) setIsEditorMaximized(false);
+      }
+      // Ctrl+Shift+F opens the Search tab (never closes it, unlike its Activity
+      // Bar button) and puts the caret in its field.
+      else if (isCtrl && e.shiftKey && !e.altKey && (e.key === 'f' || e.key === 'F' || e.code === 'KeyF')) {
+        e.preventDefault();
+        if (!layoutDocksSidebar(layoutMode)) setLayoutMode('ide');
+        if (isEditorMaximized) setIsEditorMaximized(false);
+        setActiveSidebarTab('search');
+        setSearchFocusToken(token => token + 1);
       }
       // Interface scale — Shift distinguishes these from the editor's own
       // Ctrl +/- font size, which stays bound to the focused editor. With Shift
@@ -1175,6 +1193,12 @@ export default function App() {
     }
   };
 
+  // Ctrl+A in the workspace tree: every file and directory, including those in
+  // collapsed folders.
+  const handleSelectAllNodes = () => {
+    setSelectedNodes(new Set(collectTreePaths(files)));
+  };
+
   // Opening a file has to put the editor on screen, but only the layouts that
   // hide it need leaving: forcing 'ide' from the studio or the document layout
   // would drop the user out of a layout that is already showing the file they
@@ -1202,8 +1226,9 @@ export default function App() {
 
   // `focusEditor: false` scrolls to `jumpLine` without moving the keyboard
   // focus: an agent showing the user a file must not pull them out of the chat
-  // composer they may be typing in.
-  const handleFileSelect = async (filePath, jumpLine = null, { focusEditor = true } = {}) => {
+  // composer they may be typing in. `column` (1-based, Monaco's UTF-16 units)
+  // and `length` select a range on that line, as a search result does.
+  const handleFileSelect = async (filePath, jumpLine = null, { focusEditor = true, column = null, length = 0 } = {}) => {
     if (!activeProject) return;
     setIsBottomMaximized(false);
     if (selectedFile) {
@@ -1250,7 +1275,7 @@ export default function App() {
       setSelectedFile(filePath);
       revealEditorLayout(); // Put the editor on screen if the layout hides it
       if (jumpLine !== null) {
-        setJumpToLine({ file: filePath, line: jumpLine, focusEditor });
+        setJumpToLine({ file: filePath, line: jumpLine, column, length, focusEditor });
       }
       return;
     }
@@ -1265,7 +1290,7 @@ export default function App() {
         setSelectedFile(filePath);
         revealEditorLayout(); // Put the editor on screen if the layout hides it
         if (jumpLine !== null) {
-          setJumpToLine({ file: filePath, line: jumpLine, focusEditor });
+          setJumpToLine({ file: filePath, line: jumpLine, column, length, focusEditor });
         }
 
         loadHeadBaseline(filePath);
@@ -1750,12 +1775,14 @@ export default function App() {
   const handleDeleteNode = async (node) => {
     if (!activeProject || !node) return;
 
-    // Se o nó clicado faz parte da seleção múltipla, apagamos todos da seleção
+    // A node that is part of the multi-selection deletes the whole selection.
+    // Paths inside a selected directory go with it, so only the outermost ones
+    // are deleted (a child deleted after its folder would fail as missing).
     const nodesToDelete = (selectedNodes && selectedNodes.has(node.path))
-      ? Array.from(selectedNodes)
+      ? outermostPaths(Array.from(selectedNodes))
       : [node.path];
 
-    const isMulti = nodesToDelete.length > 1;
+    const isMulti = nodesToDelete.length > 1 || nodesToDelete[0] !== node.path;
     let msg = '';
     if (isMulti) {
       msg = t('app.deleteMultiPrompt', 'Are you sure you want to delete {{count}} selected items? All internal files in directories will also be removed!', { count: nodesToDelete.length });
@@ -1804,7 +1831,8 @@ export default function App() {
   // Moves one or more nodes (files/directories) into targetDirPath ('' = project root).
   const handleMoveNode = async (paths, targetDirPath) => {
     if (!activeProject || !paths || paths.length === 0) return;
-    const uniquePaths = Array.from(new Set(paths));
+    // A selected directory carries its selected contents along.
+    const uniquePaths = outermostPaths(paths);
     let successCount = 0;
     for (const oldPath of uniquePaths) {
       const nodeName = oldPath.replace(/\\/g, '/').split('/').pop();
@@ -2304,6 +2332,7 @@ export default function App() {
                 selectedNodes={selectedNodes}
                 unsavedFiles={unsavedFiles}
                 handleNodeSelect={handleNodeSelect}
+                onSelectAllNodes={handleSelectAllNodes}
                 handleFileSelect={handleFileSelect}
                 handleNodeContextMenu={handleNodeContextMenu}
                 handleWorkspaceContextMenu={handleWorkspaceContextMenu}
@@ -2324,6 +2353,15 @@ export default function App() {
                 pendingCreate={pendingCreate}
                 onInlineCreateSubmit={submitInlineCreate}
                 onInlineCreateCancel={cancelInlineCreate}
+              />
+            ) : activeSidebarTab === 'search' ? (
+              <SearchSidebar
+                activeProject={activeProject}
+                showHiddenFiles={showHiddenWorkspaceFiles}
+                searchState={searchState}
+                setSearchState={setSearchState}
+                focusToken={searchFocusToken}
+                onOpenMatch={(path, match) => handleFileSelect(path, match.line, { column: match.column, length: match.length })}
               />
             ) : (
               <GitSidebar

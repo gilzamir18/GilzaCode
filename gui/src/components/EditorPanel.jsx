@@ -529,9 +529,22 @@ export default function EditorPanel({
       // Small delay to ensure editor is mounted and file is loaded
       setTimeout(() => {
         if (localEditorRef.current) {
-          localEditorRef.current.revealLineInCenter(jumpToLine.line);
-          localEditorRef.current.setPosition({ lineNumber: jumpToLine.line, column: 1 });
-          if (jumpToLine.focusEditor !== false) localEditorRef.current.focus();
+          const editor = localEditorRef.current;
+          if (jumpToLine.column) {
+            // A search result: select the match itself.
+            const range = {
+              startLineNumber: jumpToLine.line,
+              startColumn: jumpToLine.column,
+              endLineNumber: jumpToLine.line,
+              endColumn: jumpToLine.column + (jumpToLine.length || 0),
+            };
+            editor.setSelection(range);
+            editor.revealRangeInCenter(range);
+          } else {
+            editor.revealLineInCenter(jumpToLine.line);
+            editor.setPosition({ lineNumber: jumpToLine.line, column: 1 });
+          }
+          if (jumpToLine.focusEditor !== false) editor.focus();
         }
         setJumpToLine(null);
       }, 100);

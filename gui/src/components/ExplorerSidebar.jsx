@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import FileNode from './FileNode';
 import InlineCreateNode from './InlineCreateNode';
 import { normalizeTreePath } from '../utils/inlineCreate';
+import { isSelectAllKey } from '../utils/explorerSelection';
 
 // Left sidebar — Explorer tab: project list + workspace file tree.
 export default function ExplorerSidebar({
@@ -19,6 +20,7 @@ export default function ExplorerSidebar({
   selectedFile,
   selectedNodes,
   handleNodeSelect,
+  onSelectAllNodes,
   unsavedFiles,
   handleFileSelect,
   handleNodeContextMenu,
@@ -274,6 +276,11 @@ export default function ExplorerSidebar({
           if (e.key === 'F2' && selectedFile && !renamingNodePath && setRenamingNodePath) {
             e.preventDefault();
             setRenamingNodePath(selectedFile);
+          } else if (isSelectAllKey(e) && files.length > 0 && onSelectAllNodes) {
+            // Ctrl+A selects every file and directory in the tree instead of
+            // the page's text, as in a file manager.
+            e.preventDefault();
+            onSelectAllNodes();
           }
         }}
         style={dragOverPath === '__root__' ? { border: '2px dashed var(--vscode-accent)', backgroundColor: 'var(--vscode-hover-item)', outline: 'none' } : { outline: 'none' }}

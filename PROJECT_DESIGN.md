@@ -90,6 +90,16 @@ them, so the front-end ports unchanged. Projects moved from
   cannot be deleted, renamed or copied. `/api/file/raw` serves with Range
   support (PDF.js, media). With `sourceTex`, `..` is resolved from the
   including `.tex` file's folder, as LaTeX does.
+- **Search in files** (`gilzacode/text_search.py`, `GET /api/files/search`):
+  every file the tree lists (same skipped folders, same hidden extensions
+  unless hidden files are shown) that is UTF-8 text, as `/api/file/read`
+  requires; a NUL byte or an undecodable byte leaves the file out, never
+  decoded another way. Literal by default, with match case, whole word and
+  regular-expression options; an invalid expression is a 400 with
+  `code: "invalid_query"`. Lines split on `\r\n`/`\r`/`\n` and columns count
+  UTF-16 units, as Monaco does, so a result opens on the exact range. At most
+  2 000 matches (`truncated` beyond) and files up to 5 MiB (`skippedLarge`).
+  It is exclusive work like the tree walk, so a save sent before it is read.
 - **Imports stream to disk.** Multipart parts are read in chunks, never
   buffered whole. Filenames arrive as raw UTF-8, as Chromium sends them.
 - **Static interface**: `gilzacode/static/`, with a single-page-application
@@ -249,6 +259,7 @@ reports a dangling name when the line runs; the cut was driven by it.
   requirement is Claude Code. Settings > About keeps GilzaBots' donation card
   (the same PayPal link and QR code), with GilzaCode's wording. No license is
   stated yet, so nothing claims the project is open source.
+- **Sidebar tabs**: `explorer`, `search`, `git` (`activeSidebarTab`).
 - **Layouts**: `ide`, `chat`, `studio`, `document`. The chat layout is
   GilzaBots' chat layout with Claude Code as the conversation: the panel
   across the centre, the explorer docked left (`layoutDocksSidebar`), no
@@ -268,6 +279,19 @@ reports a dangling name when the line runs; the cut was driven by it.
 - **Projects** use `/api/projects/*`, with a project's settings (name,
   folder, main file, Git root, compile on save) saved through
   `/api/projects/update`. Unknown or mistyped fields are refused.
+- **Explorer selection** (`utils/explorerSelection.js`): Ctrl+A in the
+  workspace tree selects every file and directory, those in collapsed folders
+  included; inside the tree's rename and create fields it keeps its text
+  meaning. Delete, move and drag act on the outermost selected paths only,
+  since a directory takes its contents along and a child handled after it
+  would fail as missing.
+- **Search** (`components/SearchSidebar.jsx`): a third sidebar tab beside the
+  explorer and source control, also opened by Ctrl+Shift+F, over
+  `/api/files/search` (§3). It searches as the user types (after a pause) and
+  on Enter. Its query, options and results are held in `App`, so they survive
+  switching tabs. A result opens the file with the match selected (`jumpToLine`
+  carries a column and length); a Markdown file shown as a full preview is not
+  switched back to the editor for it.
 - **Preferences** keep GilzaBots' one-time localStorage import, which never
   overwrites a stored key.
 - **Fixed from GilzaBots**: a ` ```tikzgraphic ` block in rendered Markdown
