@@ -258,13 +258,19 @@ export default function ExplorerSidebar({
       <div
         className="vscode-sidebar-content"
         onContextMenu={handleWorkspaceContextMenu}
+        /* dragenter is cancelled as dragover is: see FileNode's handleDragOver. */
+        onDragEnter={(e) => {
+          e.preventDefault();
+          if (draggedNode) setDragOverPath('__root__');
+        }}
         onDragOver={(e) => {
           e.preventDefault();
           if (draggedNode) setDragOverPath('__root__');
         }}
         onDragLeave={(e) => {
           e.preventDefault();
-          if (dragOverPath === '__root__') setDragOverPath(null);
+          if (e.currentTarget.contains(e.relatedTarget)) return;
+          setDragOverPath(prev => (prev === '__root__' ? null : prev));
         }}
         onDrop={(e) => {
           e.preventDefault();
@@ -283,7 +289,7 @@ export default function ExplorerSidebar({
             onSelectAllNodes();
           }
         }}
-        style={dragOverPath === '__root__' ? { border: '2px dashed var(--vscode-accent)', backgroundColor: 'var(--vscode-hover-item)', outline: 'none' } : { outline: 'none' }}
+        style={dragOverPath === '__root__' ? { outline: '2px dashed var(--vscode-accent)', outlineOffset: '-2px', backgroundColor: 'var(--vscode-hover-item)' } : { outline: 'none' }}
       >
         <div className="vscode-sidebar-section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>{t('explorerSidebar.workspaceFiles')}</span>

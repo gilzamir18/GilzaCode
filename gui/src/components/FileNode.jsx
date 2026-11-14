@@ -99,6 +99,11 @@ export default function FileNode({
     e.dataTransfer.effectAllowed = 'move';
   };
 
+  // Used for both dragenter and dragover. Chromium fires only dragenter on the
+  // update where the element under the pointer changes, and takes that
+  // update's drop operation from whether dragenter was cancelled. Without it,
+  // a release right after such an update is refused: in the window (WebView2)
+  // the drag then ends with no drop event at all.
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -112,9 +117,10 @@ export default function FileNode({
   const handleDragLeave = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (dragOverPath === node.path) {
-      setDragOverPath(null);
-    }
+    // Moving between this node's own parts (icon, label, child rows) is not
+    // leaving it.
+    if (e.currentTarget.contains(e.relatedTarget)) return;
+    setDragOverPath(prev => (prev === node.path ? null : prev));
   };
 
   const handleDrop = (e) => {
@@ -128,7 +134,9 @@ export default function FileNode({
   };
 
   const isDragOver = dragOverPath === node.path;
-  let baseStyle = isDragOver ? { backgroundColor: 'var(--vscode-hover-item)', border: '1px dashed var(--vscode-accent)' } : {};
+  // An outline, not a border: a border changes the row's height, which moves
+  // every row below it under the pointer while dragging.
+  let baseStyle = isDragOver ? { backgroundColor: 'var(--vscode-hover-item)', outline: '1px dashed var(--vscode-accent)', outlineOffset: '-1px' } : {};
 
   // Check if node is part of the multi-selection
   const isMultiSelected = selectedNodes && selectedNodes.has(node.path);
@@ -168,6 +176,7 @@ export default function FileNode({
         className="select-none"
         draggable={!isRenaming}
         onDragStart={handleDragStart}
+        onDragEnter={handleDragOver}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}

@@ -288,6 +288,16 @@ reports a dangling name when the line runs; the cut was driven by it.
   meaning. Delete, move and drag act on the outermost selected paths only,
   since a directory takes its contents along and a child handled after it
   would fail as missing.
+- **Tree drag and drop** (`FileNode.jsx`, `ExplorerSidebar.jsx`): a drop target
+  cancels `dragenter` as well as `dragover`. When the element under the pointer
+  changes, Chromium fires only `dragenter` for that update and takes the drop
+  operation from it. In the window (WebView2) a release after an uncancelled
+  `dragenter` ended the drag with no `drop` at all, so dragging a folder onto
+  another did nothing. The headless browser accepted the same drop. The
+  highlight is an outline, not a border: a border changed the row height, so the
+  rows below moved under a still pointer and the target kept changing. Moving
+  between a node's own parts is not a `dragleave` (`relatedTarget`). Verified
+  with real mouse drags in the window.
 - **Search** (`components/SearchSidebar.jsx`): a third sidebar tab beside the
   explorer and source control, also opened by Ctrl+Shift+F, over
   `/api/files/search` (§3). It searches as the user types (after a pause) and
