@@ -18,7 +18,7 @@ import time
 
 from aiohttp import web
 
-from gilzacode import claude_plugins
+from gilzacode import claude_cli, claude_plugins
 from gilzacode.claude_cli import ClaudeCliError, find_claude
 from gilzacode.server.app import error, read_json
 from gilzacode.server.routes_terminal import CLAUDE_ID, SESSIONS_KEY, _same_path, _session_for
@@ -40,15 +40,16 @@ def bracketed_paste(text: str) -> str:
 def _status(request: web.Request, project_path: str) -> dict:
     try:
         find_claude()
-        problem = ""
+        problem, problem_kind = "", ""
     except ClaudeCliError as exc:
-        problem = str(exc)
+        problem, problem_kind = str(exc), exc.kind
     session = request.app[SESSIONS_KEY].get(CLAUDE_ID)
     mine = session is not None and bool(project_path) and _same_path(session.project_path, project_path)
     now = time.monotonic()
     return {
         "available": not problem,
         "problem": problem,
+        "problem_kind": problem_kind,
         "running": bool(mine and session.is_running),
         "exited": bool(mine and session.exited),
         "uptime_ms": int((now - session.started_at) * 1000) if mine else 0,
@@ -96,6 +97,53 @@ async def paste(request: web.Request) -> web.Response:
         await asyncio.sleep(0.1)
     session.write(bracketed_paste(text))
     return web.json_response({"pasted": True})
+
+
+# ── The Claude Code CLI itself (Settings > Dependencies, the panel) ──────────
+
+#: The request currently running the installer, so a second click does not
+#: start a second installer over the first.
+_installing = False
+
+
+def _cli_status() -> dict:
+    command_argv, command = claude_cli.install_command()
+    try:
+        path, problem, kind = find_claude(), "", ""
+    except ClaudeCliError as exc:
+        path, problem, kind = "", str(exc), exc.kind
+    return {
+        "available": bool(path),
+        "path": path,
+        "problem": problem,
+        "problem_kind": kind,
+        "desktop_app_installed": claude_cli.desktop_app_installed(),
+        "install_command": command,
+        "install_shell": "PowerShell" if command_argv[0].lower().startswith("powershell") else "bash",
+        "guide_url": claude_cli.INSTALL_GUIDE_URL,
+        "installing": _installing,
+    }
+
+
+@routes.get("/api/claude/cli")
+async def cli_status(_request: web.Request) -> web.Response:
+    return web.json_response(_cli_status())
+
+
+@routes.post("/api/claude/cli/install")
+async def install_cli(_request: web.Request) -> web.Response:
+    """Run Anthropic's native installer for the Claude Code CLI (an explicit click)."""
+    global _installing
+    if _installing:
+        return error(409, "The Claude Code installer is already running.", kind="busy")
+    _installing = True
+    try:
+        result = await claude_cli.install_cli()
+    except ClaudeCliError as exc:
+        return error(504 if exc.kind == "timeout" else 502, str(exc), kind=exc.kind)
+    finally:
+        _installing = False
+    return web.json_response({**_cli_status(), "output": result["output"]})
 
 
 # ── The GilzaCode skills (a Claude Code plugin) ──────────────────────────────

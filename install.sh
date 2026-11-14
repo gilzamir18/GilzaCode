@@ -153,5 +153,7 @@ fi
 if ! command -v claude >/dev/null 2>&1 && [[ ! -x "$HOME/.local/bin/claude" ]]; then
     echo ""
     echo "WARNING: Claude Code (claude) was not found. GilzaCode needs it for its Claude Code panel, Translate and Look up." >&2
-    echo "Install it from https://code.claude.com and start GilzaCode again." >&2
+    echo "GilzaCode needs the Claude Code CLI (the claude command), not the Claude desktop app. Install it with:" >&2
+    echo "    curl -fsSL https://claude.ai/install.sh | bash" >&2
+    echo "or from GilzaCode's Settings > Dependencies. Guide: https://code.claude.com/docs/en/setup" >&2
 fi

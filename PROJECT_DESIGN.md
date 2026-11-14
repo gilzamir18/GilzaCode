@@ -259,6 +259,9 @@ reports a dangling name when the line runs; the cut was driven by it.
   requirement is Claude Code. Settings > About keeps GilzaBots' donation card
   (the same PayPal link and QR code), with GilzaCode's wording. No license is
   stated yet, so nothing claims the project is open source.
+- **Settings tabs**: General, Dependencies and About. Dependencies holds the
+  Claude Code CLI (§8, *Installing the CLI*), then Tectonic and pandoc; the
+  tab was empty after the cut from GilzaBots.
 - **Sidebar tabs**: `explorer`, `search`, `git` (`activeSidebarTab`).
 - **Layouts**: `ide`, `chat`, `studio`, `document`. The chat layout is
   GilzaBots' chat layout with Claude Code as the conversation: the panel
@@ -306,11 +309,52 @@ reports a dangling name when the line runs; the cut was driven by it.
 
 - **The session** is a PTY with the terminal id `claude` that runs the
   `claude` CLI in the project folder. It is found at `GILZACODE_CLAUDE`, on
-  `PATH`, or on Linux in `~/.local/bin`, where Claude Code's installer puts it
-  (`claude_cli.installer_locations`). A program started from the desktop menu
+  `PATH`, or in `~/.local/bin` (`claude.exe` on Windows), where Claude Code's
+  native installer puts it (`claude_cli.installer_locations`). That folder is
+  searched because a running program keeps the `PATH` it started with: the
+  installer adds the folder to the user's `PATH`, which GilzaCode would only
+  see after a restart. On Linux, a program started from the desktop menu also
   gets the login session's `PATH`, which lacks that folder until the next login
-  after it was created. A missing CLI is reported in the panel with what to
-  install.
+  after it was created.
+
+### Installing the CLI (`components/ClaudeCliSetup.jsx`, Settings > Dependencies)
+
+What GilzaCode needs is the Claude Code **CLI**. A web search for "Claude
+Code", and the product page `code.claude.com` redirects to, lead to the
+**desktop app**, which is a different program: its Windows (MSIX) package
+registers `claude-desktop.exe` and no `claude` (checked on 2026-11-14 with
+package 5.1231). So a user could install "Claude Code" and still be told it
+was missing.
+
+- **Which program, said plainly.** A missing CLI shows a card, in the panel and
+  in Settings > Dependencies, naming the CLI and the `claude` command. When the
+  desktop app's execution alias exists (`%LOCALAPPDATA%\Microsoft\WindowsApps\
+  claude-desktop.exe`, `claude_cli.desktop_app_installed`), the card says that
+  the desktop app does not provide `claude`. The desktop app is never used in
+  the CLI's place.
+- **The official installer, on an explicit click.** *Install Claude Code CLI*
+  runs Anthropic's native installer, whose command the card shows before it is
+  clicked: `irm https://claude.ai/install.ps1 | iex` in PowerShell, or
+  `curl -fsSL https://claude.ai/install.sh | bash`
+  (`claude_cli.install_command`). Its output is shown after it ends; an exit
+  status other than 0 is an error with that output (502), as is an install
+  that leaves `claude` unfound (kind `not_found`, which says to restart
+  GilzaCode); 10 minutes is a timeout (504). One install runs at a time (409).
+- **The guide** is `https://code.claude.com/docs/en/setup`
+  (`INSTALL_GUIDE_URL`), the CLI's own installation page, also named in the
+  error message of every endpoint that needs `claude`.
+- **Found while open.** *Check again* finds a CLI installed after GilzaCode
+  started (the installer's folder, above); in the panel this starts the
+  session. Verified in a browser-mode run with `claude` absent from `PATH` and
+  from the home folder, then copied into `~/.local/bin`: *Check again* started
+  Claude Code in the panel.
+- **Endpoints:** `GET /api/claude/cli` (found path, problem, whether the
+  desktop app is installed, the command and the guide),
+  `POST /api/claude/cli/install`. `/api/claude/status` also reports
+  `problem_kind`, so the panel shows the card only for `not_installed`.
+- **Not verified live:** running Anthropic's installer from the button. The
+  tests run the same orchestration with a stand-in installer; running the real
+  one would have replaced this machine's Claude Code.
 - **Transport:** the panel streams and types through the terminal endpoints,
   so it reuses the bottom panel's xterm component. Opening the panel starts
   the session. Switching projects replaces it.
@@ -640,8 +684,10 @@ administrator rights.
 - **What it creates:** Desktop and Start-menu shortcuts, an uninstall shortcut,
   and a per-user *Installed apps* entry.
 - **What it refuses:** to extract over a running copy.
-- **What it checks:** it warns when `claude` is not on PATH (GilzaCode's one
-  requirement) or when WebView2 is missing, and installs neither.
+- **What it checks:** it warns when `claude` is neither on PATH nor in
+  `~/.local/bin` (GilzaCode's one requirement), naming the CLI rather than the
+  desktop app and giving the official install command, or when WebView2 is
+  missing. It installs neither.
 - **No PATH entry**, unlike GilzaBots: GilzaCode has no command-line interface.
 
 ### 10.1 Linux (`build_exe.sh`, `packaging/GilzaCode-linux.spec`, `install.sh`, `uninstall.sh`)
@@ -717,8 +763,8 @@ rights:
   `/proc/*/exe`).
 - **What it creates:** a `gilzacode.desktop` menu entry, matching the window's
   Wayland app id (`setDesktopFileName`).
-- **What it checks:** it warns when `claude` is missing. It adds no PATH entry,
-  as on Windows.
+- **What it checks:** it warns when `claude` is missing, with the CLI's install
+  command, as on Windows. It adds no PATH entry, as on Windows.
 
 **`uninstall.sh`** keeps `uninstall.ps1`'s guarantees:
 - it refuses while anything runs from the installation;

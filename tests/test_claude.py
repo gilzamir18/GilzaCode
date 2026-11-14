@@ -74,12 +74,127 @@ def test_nested_session_markers_are_not_inherited():
     assert env == {"PATH": "x"}
 
 
-def test_a_missing_claude_is_reported_with_what_to_do(monkeypatch):
+@pytest.fixture
+def no_claude(monkeypatch):
+    """`claude` is nowhere: not configured, not on PATH, not where the installer puts it."""
     monkeypatch.delenv("GILZACODE_CLAUDE", raising=False)
     monkeypatch.setattr("shutil.which", lambda name: None)
+    monkeypatch.setattr(claude_cli, "installer_locations", lambda: [])
+    monkeypatch.setattr(claude_cli, "desktop_app_installed", lambda: False)
+
+
+def test_a_missing_claude_is_reported_with_what_to_do(no_claude):
     with pytest.raises(claude_cli.ClaudeCliError) as exc:
         claude_cli.find_claude()
-    assert exc.value.kind == "not_installed" and "PATH" in str(exc.value)
+    message = str(exc.value)
+    assert exc.value.kind == "not_installed"
+    # The CLI's own installation page, not the product page that offers the desktop app.
+    assert claude_cli.INSTALL_GUIDE_URL in message and "command-line" in message
+    assert "desktop app" not in message
+
+
+def test_the_desktop_app_is_named_as_not_being_the_cli(no_claude, monkeypatch):
+    monkeypatch.setattr(claude_cli, "desktop_app_installed", lambda: True)
+    with pytest.raises(claude_cli.ClaudeCliError) as exc:
+        claude_cli.find_claude()
+    assert claude_cli.DESKTOP_APP_HINT in str(exc.value) and claude_cli.INSTALL_GUIDE_URL in str(exc.value)
+
+
+def test_the_desktop_app_is_recognised_by_its_execution_alias(tmp_path, monkeypatch):
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    assert claude_cli.desktop_app_installed() is False
+    aliases = tmp_path / "Microsoft" / "WindowsApps"
+    aliases.mkdir(parents=True)
+    (aliases / "claude-desktop.exe").write_bytes(b"")
+    assert claude_cli.desktop_app_installed() is True
+    monkeypatch.setattr(sys, "platform", "linux")
+    assert claude_cli.desktop_app_installed() is False
+
+
+@pytest.mark.parametrize("platform, name", [("win32", "claude.exe"), ("linux", "claude")])
+def test_the_native_installers_folder_is_searched_after_path(platform, name, tmp_path, monkeypatch):
+    """A CLI installed while GilzaCode runs is not on the PATH this process started with."""
+    monkeypatch.setattr(sys, "platform", platform)
+    monkeypatch.setattr(os.path, "expanduser", lambda p: str(tmp_path) if p == "~" else p)
+    assert claude_cli.installer_locations() == [str(tmp_path / ".local" / "bin" / name)]
+
+
+def test_a_claude_in_the_installers_folder_is_found(no_claude, tmp_path, monkeypatch):
+    exe = tmp_path / "claude.exe"
+    exe.write_bytes(b"")
+    exe.chmod(0o755)
+    monkeypatch.setattr(claude_cli, "installer_locations", lambda: [str(exe)])
+    assert claude_cli.find_claude() == str(exe)
+
+
+def test_the_install_command_is_anthropics_native_installer(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "win32")
+    argv, shown = claude_cli.install_command()
+    assert shown == "irm https://claude.ai/install.ps1 | iex"
+    assert argv[0] == "powershell.exe" and argv[-1] == shown and "-NoProfile" in argv
+    monkeypatch.setattr(sys, "platform", "linux")
+    argv, shown = claude_cli.install_command()
+    assert shown == "curl -fsSL https://claude.ai/install.sh | bash"
+    assert argv[:2] == ["bash", "-c"] and argv[2] == f"set -o pipefail; {shown}"
+
+
+@pytest.fixture
+def fake_installer(monkeypatch):
+    """Replace the installer's argv with a Python one-liner; the orchestration around it is real."""
+    def configure(code):
+        monkeypatch.setattr(claude_cli, "install_command", lambda: ([sys.executable, "-c", code], "shown"))
+    return configure
+
+
+async def test_installing_reports_the_found_cli_and_the_installers_output(fake_installer, monkeypatch):
+    fake_installer("print('\\x1b[32mClaude Code successfully installed!\\x1b[0m')")
+    monkeypatch.setattr(claude_cli, "find_claude", lambda: "C:/x/claude.exe")
+    result = await claude_cli.install_cli()
+    assert result == {"path": "C:/x/claude.exe", "output": "Claude Code successfully installed!"}
+
+
+async def test_a_failed_install_keeps_the_installers_output(fake_installer):
+    fake_installer("import sys; print('Download failed: 403'); sys.exit(3)")
+    with pytest.raises(claude_cli.ClaudeCliError) as exc:
+        await claude_cli.install_cli()
+    assert exc.value.kind == "failed" and "exit status 3" in str(exc.value) and "403" in str(exc.value)
+
+
+async def test_an_install_that_leaves_no_claude_says_so(fake_installer, no_claude):
+    fake_installer("print('done')")
+    with pytest.raises(claude_cli.ClaudeCliError) as exc:
+        await claude_cli.install_cli()
+    assert exc.value.kind == "not_found" and "Restart GilzaCode" in str(exc.value)
+
+
+async def test_an_installer_that_hangs_is_stopped(fake_installer):
+    fake_installer("import time; time.sleep(30)")
+    with pytest.raises(claude_cli.ClaudeCliError) as exc:
+        await claude_cli.install_cli(timeout=0.5)
+    assert exc.value.kind == "timeout"
+
+
+async def test_cli_status_and_install_endpoints(client, fake_installer, no_claude, monkeypatch):
+    fake_installer("import sys; print('boom'); sys.exit(1)")
+    status = await (await client.get("/api/claude/cli")).json()
+    assert status["available"] is False and status["problem_kind"] == "not_installed"
+    assert status["guide_url"] == claude_cli.INSTALL_GUIDE_URL and status["install_command"] == "shown"
+
+    failed = await client.post("/api/claude/cli/install")
+    assert failed.status == 502 and "boom" in (await failed.json())["error"]
+
+    fake_installer("print('installed')")
+    monkeypatch.setattr(claude_cli, "find_claude", lambda: "/home/u/.local/bin/claude")
+    monkeypatch.setattr(routes_claude, "find_claude", lambda: "/home/u/.local/bin/claude")
+    done = await (await client.post("/api/claude/cli/install")).json()
+    assert done["available"] is True and done["path"] == "/home/u/.local/bin/claude" and done["output"] == "installed"
+
+
+async def test_a_second_install_is_refused_while_one_runs(client, monkeypatch):
+    monkeypatch.setattr(routes_claude, "_installing", True)
+    response = await client.post("/api/claude/cli/install")
+    assert response.status == 409 and (await response.json())["kind"] == "busy"
 
 
 def test_stream_parsing():

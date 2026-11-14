@@ -335,10 +335,11 @@ def test_claude_is_found_where_its_installer_puts_it_when_path_does_not_say(monk
     assert claude_cli.find_claude() == str(claude)
 
 
-def test_windows_searches_only_path_for_claude(monkeypatch):
+def test_windows_also_searches_the_native_installers_folder_for_claude(monkeypatch):
+    """The installer adds the folder to the user's PATH, which a running GilzaCode does not see."""
     from gilzacode import claude_cli
     monkeypatch.setattr(sys, "platform", "win32")
-    assert claude_cli.installer_locations() == []
+    assert claude_cli.installer_locations() == [os.path.join(os.path.expanduser("~"), ".local", "bin", "claude.exe")]
 
 
 # ── Tectonic and xdg-open ───────────────────────────────────────────────────

@@ -12,6 +12,7 @@ import { useCustomDialog } from './CustomDialogProvider';
 import SpeechVoiceManager from './SpeechVoiceManager.jsx';
 import ClaudeSkillsSection from './ClaudeSkillsSection.jsx';
 import ClaudeModelSection from './ClaudeModelSection.jsx';
+import ClaudeCliSetup from '../ClaudeCliSetup.jsx';
 import i18n from '../../i18n/index.js';
 import { setPreference } from '../../utils/preferences';
 import { openExternal } from '../../utils/openExternal';
@@ -449,8 +450,22 @@ export default function SettingsModal({
                 <span style={{ fontSize: '11px', color: 'var(--vscode-text-muted)' }}>{t('settingsModal.panelMaxLinesHint')}</span>
               </div>
 
-              {/* Install Tectonic */}
+              <ClaudeSkillsSection />
+
+              <ClaudeModelSection onSessionReplaced={onClaudeSessionReplaced} />
+            </>
+          )}
+
+          {activeTab === 'dependencies' && (
+            <>
+              {/* Claude Code CLI: GilzaCode's one requirement */}
               <div className="flex flex-col" style={{ gap: '6px' }}>
+                <label className="vscode-sidebar-section-title" style={{ padding: 0 }}>{t('settingsModal.claudeCliTitle', 'Claude Code CLI (required)')}</label>
+                <ClaudeCliSetup />
+              </div>
+
+              {/* Install Tectonic */}
+              <div className="flex flex-col" style={{ gap: '6px', borderTop: '1px solid var(--vscode-border)', paddingTop: '12px', marginTop: '6px' }}>
                 <label className="vscode-sidebar-section-title" style={{ padding: 0 }}>{t('settingsModal.installTectonicTitle')}</label>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button
@@ -525,9 +540,6 @@ export default function SettingsModal({
                 <span style={{ fontSize: '11px', color: 'var(--vscode-descriptionForeground)' }}>{t('settingsModal.installPandocHint')}</span>
               </div>
 
-              <ClaudeSkillsSection />
-
-              <ClaudeModelSection onSessionReplaced={onClaudeSessionReplaced} />
             </>
           )}
 

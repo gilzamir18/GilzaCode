@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bot, ClipboardPaste, Loader2, RotateCcw, Trash2, X } from 'lucide-react';
 import TerminalInstance from './TerminalInstance';
+import ClaudeCliSetup from './ClaudeCliSetup';
 import { TERMINAL_FONT_SIZE_DEFAULT } from '../hooks/useTerminal';
 
 // How long Claude Code must have been running before a staged prompt is pasted
@@ -28,6 +29,8 @@ export default function ClaudePanel({ width, fillContainer, activeProject, promp
   const [notice, setNotice] = useState('');
   const [ended, setEnded] = useState(false);
   const [problem, setProblem] = useState('');
+  // 'not_installed' shows how to install the CLI instead of the bare message.
+  const [problemKind, setProblemKind] = useState('');
   const [connectionKey, setConnectionKey] = useState(0);
   // The stream dropped and EventSource is retrying. Not after `/exit`: the
   // server then ends the stream with an `ended` event and the panel says so at once.
@@ -57,8 +60,11 @@ export default function ClaudePanel({ width, fillContainer, activeProject, promp
   useEffect(() => {
     setEnded(false);
     setProblem('');
+    setProblemKind('');
     setReconnecting(false);
-    readStatus().then(status => { if (status && !status.available) setProblem(status.problem); });
+    readStatus().then(status => {
+      if (status && !status.available) { setProblem(status.problem); setProblemKind(status.problem_kind || ''); }
+    });
   }, [readStatus]);
 
   const paste = useCallback(async (text) => {
@@ -97,9 +103,11 @@ export default function ClaudePanel({ width, fillContainer, activeProject, promp
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setProblem(data.error || t('claudePanel.startFailed', 'Claude Code could not be started.'));
+      setProblemKind(data.kind || '');
       return;
     }
     setProblem('');
+    setProblemKind('');
     setEnded(false);
     setReconnecting(false);
     setConnectionKey(k => k + 1);
@@ -123,7 +131,7 @@ export default function ClaudePanel({ width, fillContainer, activeProject, promp
   const onStreamClosed = useCallback(async () => {
     setReconnecting(false);
     const status = await readStatus();
-    if (status && !status.available) setProblem(status.problem);
+    if (status && !status.available) { setProblem(status.problem); setProblemKind(status.problem_kind || ''); }
     else setEnded(true);
   }, [readStatus]);
 
@@ -182,6 +190,11 @@ export default function ClaudePanel({ width, fillContainer, activeProject, promp
       <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
         {!projectPath ? (
           <p style={{ margin: 12, opacity: 0.8 }}>{t('claudePanel.noProject', 'Open a project to start Claude Code in it.')}</p>
+        ) : problemKind === 'not_installed' ? (
+          // Installed from here (or found by "Check again"): start the session.
+          <div style={{ position: 'absolute', inset: 0, padding: 12, overflowY: 'auto' }}>
+            <ClaudeCliSetup onAvailable={restart} />
+          </div>
         ) : problem ? (
           <p role="alert" style={{ margin: 12, color: 'var(--vscode-errorForeground)', whiteSpace: 'pre-wrap' }}>{problem}</p>
         ) : ended ? (

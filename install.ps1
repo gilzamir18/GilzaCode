@@ -187,10 +187,13 @@ Write-Host "Start it from the Desktop or the Start menu." -ForegroundColor Cyan
 Write-Host "To uninstall, use Settings > Apps > Installed apps, or the Start menu shortcut." -ForegroundColor Cyan
 
 # What GilzaCode needs and does not install for the user.
-if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
+if (-not (Get-Command claude -ErrorAction SilentlyContinue) -and
+    -not (Test-Path (Join-Path $env:USERPROFILE ".local\bin\claude.exe"))) {
     Write-Host ""
-    Write-Warning "Claude Code (claude) was not found on PATH. GilzaCode needs it for its Claude Code panel, Translate and Look up."
-    Write-Host "Install it from https://code.claude.com and start GilzaCode again." -ForegroundColor Yellow
+    Write-Warning "Claude Code (claude) was not found. GilzaCode needs it for its Claude Code panel, Translate and Look up."
+    Write-Host "GilzaCode needs the Claude Code CLI (the claude command), not the Claude desktop app. Install it with:" -ForegroundColor Yellow
+    Write-Host "    irm https://claude.ai/install.ps1 | iex" -ForegroundColor Yellow
+    Write-Host "or from GilzaCode's Settings > Dependencies. Guide: https://code.claude.com/docs/en/setup" -ForegroundColor Yellow
 }
 if (-not (Test-WebView2Runtime)) {
     Write-Host ""

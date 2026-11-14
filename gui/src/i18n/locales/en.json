@@ -953,7 +953,8 @@
     "dictationDownloading": "Downloading…",
     "dictationHint": "Records from the microphone and types what you said into the chat composer, for you to review before sending. The model runs on this machine, so nothing is uploaded. Larger models are markedly more accurate outside English: on a Portuguese test sentence, tiny and base both misheard a word while small reproduced it exactly.",
     "chatThoughtPreviewTokens": "Reasoning shown in the chat (tokens)",
-    "chatThoughtPreviewTokensHint": "While a turn runs, the chat keeps only the last lines of reasoning in view. The whole of it is read in the Agent Thinking panel, which the chat links to (default: 1000)."
+    "chatThoughtPreviewTokensHint": "While a turn runs, the chat keeps only the last lines of reasoning in view. The whole of it is read in the Agent Thinking panel, which the chat links to (default: 1000).",
+    "claudeCliTitle": "Claude Code CLI (required)"
   },
   "hardwareModal": {
     "title": "Hardware Configuration",
@@ -2024,5 +2025,23 @@
     "reconnecting": "Waiting for Claude Code to reconnect…",
     "reconnectingHint": "This takes a few seconds. If the session has ended, you can start it again.",
     "ollamaBadgeTitle": "Claude Code is using Ollama at {{url}}. Change it in Settings > General."
+  },
+  "claudeCli": {
+    "checking": "Looking for the Claude Code CLI…",
+    "statusError": "Could not check for Claude Code: ",
+    "found": "Claude Code CLI found: {{path}}",
+    "installed": "Claude Code CLI installed: {{path}}",
+    "signInHint": "The first time Claude Code starts in the panel, it asks you to sign in to your Claude account (Pro, Max, Team or Enterprise) or to use an API key.",
+    "missing": "The Claude Code CLI (the `claude` command) was not found.",
+    "desktopAppFound": "The Claude desktop app is installed, but it does not provide the `claude` command. GilzaCode needs the command-line version, a separate program. Installing it does not change the desktop app.",
+    "whichOne": "GilzaCode runs Claude Code for the terminal (CLI). Web searches and the Claude website often lead to the desktop app instead, which is not what GilzaCode uses.",
+    "officialCommand": "Official installer ({{shell}}), the one the button runs:",
+    "copy": "Copy the command",
+    "copied": "Copied",
+    "installBtn": "Install Claude Code CLI",
+    "installing": "Installing…",
+    "installingHint": "The installer downloads Claude Code and shows no progress; this can take a minute or two.",
+    "guideBtn": "Installation guide",
+    "checkAgain": "Check again"
   }
 }

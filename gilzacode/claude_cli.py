@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import shutil
 from dataclasses import dataclass, field
 
@@ -27,7 +28,21 @@ from dataclasses import dataclass, field
 #: (during development, a Claude Code terminal), so the markers are not passed on.
 NESTED_SESSION_MARKERS = ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_CHILD_SESSION")
 
-INSTALL_HINT = "Install Claude Code (https://code.claude.com) and make sure `claude` is on PATH, then try again."
+#: Anthropic's installation page for the Claude Code CLI. Not the product page
+#: (code.claude.com redirects there), which offers the desktop app first.
+INSTALL_GUIDE_URL = "https://code.claude.com/docs/en/setup"
+
+#: The native installer, as the installation page gives it (checked 2026-11-14).
+#: The Windows one is the PowerShell variant.
+WINDOWS_INSTALL_COMMAND = "irm https://claude.ai/install.ps1 | iex"
+POSIX_INSTALL_COMMAND = "curl -fsSL https://claude.ai/install.sh | bash"
+
+INSTALL_HINT = ("GilzaCode needs the Claude Code command-line tool (the `claude` command). "
+                f"Install it from {INSTALL_GUIDE_URL} (Settings > Dependencies can run the official installer), "
+                "then try again.")
+
+DESKTOP_APP_HINT = ("The Claude desktop app is installed, but it does not provide the `claude` command: "
+                    "it is a separate program from the Claude Code CLI.")
 
 
 class ClaudeCliError(RuntimeError):
@@ -39,19 +54,39 @@ class ClaudeCliError(RuntimeError):
 
 
 def installer_locations() -> list[str]:
-    """Where Claude Code's own installer puts `claude`, searched after PATH.
+    """Where Claude Code's native installer puts `claude`, searched after PATH.
 
-    Linux only. A program started from the desktop menu gets the login
-    session's PATH, not the shell's: the native installer's ``~/.local/bin`` is
-    missing from it until the next login (Ubuntu's ``~/.profile`` adds it only
-    when the folder existed at login), so `claude` works in a terminal while the
-    window cannot find it. Windows: none (the installer puts it on PATH).
+    A running program keeps the PATH it started with. The installer adds its
+    folder to the user's PATH, but GilzaCode only sees that after a restart, so
+    a CLI installed while the window is open (from Settings > Dependencies) is
+    found here. On Linux, a program started from the desktop menu also gets the
+    login session's PATH, which lacks ``~/.local/bin`` until the next login
+    after the folder was created (Ubuntu's ``~/.profile`` adds it only when the
+    folder existed at login).
     """
     import sys
 
-    if not sys.platform.startswith("linux"):
-        return []
-    return [os.path.join(os.path.expanduser("~"), ".local", "bin", "claude")]
+    home = os.path.expanduser("~")
+    if sys.platform == "win32":
+        return [os.path.join(home, ".local", "bin", "claude.exe")]
+    if sys.platform.startswith("linux"):
+        return [os.path.join(home, ".local", "bin", "claude")]
+    return []
+
+
+def desktop_app_installed() -> bool:
+    """Whether the Claude desktop app is installed (Windows only).
+
+    Its MSIX package registers the app execution alias ``claude-desktop.exe``
+    in ``%LOCALAPPDATA%\\Microsoft\\WindowsApps``, and no ``claude``. It is
+    detected only to explain why `claude` is missing, never used in its place.
+    """
+    import sys
+
+    local = os.environ.get("LOCALAPPDATA", "")
+    if sys.platform != "win32" or not local:
+        return False
+    return os.path.lexists(os.path.join(local, "Microsoft", "WindowsApps", "claude-desktop.exe"))
 
 
 def find_claude() -> str:
@@ -62,8 +97,68 @@ def find_claude() -> str:
         found = next((path for path in installer_locations() if os.path.isfile(path) and os.access(path, os.X_OK)),
                      None)
     if not found:
-        raise ClaudeCliError(f"Claude Code (`claude`) was not found. {INSTALL_HINT}", kind="not_installed")
+        desktop = f" {DESKTOP_APP_HINT}" if desktop_app_installed() else ""
+        raise ClaudeCliError(f"Claude Code (`claude`) was not found.{desktop} {INSTALL_HINT}", kind="not_installed")
     return found
+
+
+# ── Installing the CLI ───────────────────────────────────────────────────────
+
+def install_command() -> tuple[list[str], str]:
+    """The official native installer for this platform: (argv, the command as shown to the user)."""
+    import sys
+
+    if sys.platform == "win32":
+        return ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", WINDOWS_INSTALL_COMMAND], \
+            WINDOWS_INSTALL_COMMAND
+    return ["bash", "-c", f"set -o pipefail; {POSIX_INSTALL_COMMAND}"], POSIX_INSTALL_COMMAND
+
+
+_ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07]*\x07")
+
+
+def _plain(text: str) -> str:
+    """Installer output without terminal colour codes."""
+    return _ANSI.sub("", text).replace("\r\n", "\n").replace("\r", "\n")
+
+
+async def install_cli(timeout: float = 600.0) -> dict:
+    """Run Anthropic's native installer, then find `claude` again.
+
+    Returns ``{"path", "output"}``. Raises `ClaudeCliError`: ``timeout``;
+    ``failed`` when the installer exits with an error; ``not_found`` when it
+    succeeded and `claude` is still not found (a non-default location). The
+    output is the installer's own, for the user to read.
+    """
+    from gilzacode.subprocess_utils import host_environment
+
+    argv, _shown = install_command()
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *argv, cwd=os.path.expanduser("~"), env=host_environment(),
+            stdin=asyncio.subprocess.DEVNULL, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
+        )
+    except OSError as exc:  # no powershell.exe / bash
+        raise ClaudeCliError(f"The Claude Code installer could not be started ({argv[0]}: {exc}). "
+                             f"Install it by hand: {INSTALL_GUIDE_URL}", kind="failed") from None
+    try:
+        out, _ = await asyncio.wait_for(process.communicate(), timeout)
+    except asyncio.TimeoutError:
+        process.kill()
+        await process.wait()
+        raise ClaudeCliError(f"The Claude Code installer did not finish within {int(timeout)} seconds.",
+                             kind="timeout") from None
+    output = _plain(out.decode("utf-8", "replace")).strip()
+    if process.returncode != 0:
+        raise ClaudeCliError(f"The Claude Code installer failed (exit status {process.returncode}).\n"
+                             f"{output[-2000:]}", kind="failed")
+    try:
+        path = find_claude()
+    except ClaudeCliError:
+        raise ClaudeCliError("The installer finished, but `claude` is still not found. Restart GilzaCode; "
+                             f"if it is still missing, see {INSTALL_GUIDE_URL}.\n{output[-2000:]}",
+                             kind="not_found") from None
+    return {"path": path, "output": output}
 
 
 def child_environment(base: dict | None = None) -> dict:
