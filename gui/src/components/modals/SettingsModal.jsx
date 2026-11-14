@@ -10,6 +10,7 @@ import {
 } from '../../utils/uiScale';
 import { useCustomDialog } from './CustomDialogProvider';
 import SpeechVoiceManager from './SpeechVoiceManager.jsx';
+import ClaudeSkillsSection from './ClaudeSkillsSection.jsx';
 import i18n from '../../i18n/index.js';
 import { setPreference } from '../../utils/preferences';
 import { openExternal } from '../../utils/openExternal';
@@ -522,6 +523,8 @@ export default function SettingsModal({
                 )}
                 <span style={{ fontSize: '11px', color: 'var(--vscode-descriptionForeground)' }}>{t('settingsModal.installPandocHint')}</span>
               </div>
+
+              <ClaudeSkillsSection />
             </>
           )}
 

@@ -114,6 +114,26 @@ def _log(message: str) -> None:
     print(f"[GilzaCode] WebView2: {message}", file=sys.stderr, flush=True)
 
 
+def disable_browser_zoom(settings) -> None:
+    """Turn off WebView2's own zoom on a ``CoreWebView2Settings``.
+
+    The interface has its own scale (Settings, Ctrl+=/Ctrl+-), applied as a CSS
+    zoom that reflows the layout. WebView2's zooms fight it:
+
+    - **Pinch zoom** (a touchpad pinch or a two-finger touch) magnifies the
+      visual viewport without reflowing, so the frame is cropped: the top bar,
+      the status bar and the panel edges move off screen and clicks seem to miss.
+      Nothing in the interface shows it happened or undoes it.
+    - **Ctrl+wheel zoom**, which pywebview enables unconditionally, changes the
+      page zoom behind the interface scale's back.
+
+    Called after pywebview's own initialisation handler, which sets
+    ``IsZoomControlEnabled = True``.
+    """
+    settings.IsZoomControlEnabled = False
+    settings.IsPinchZoomEnabled = False
+
+
 def permission_decision(kind, kinds) -> bool:
     """Whether a WebView2 permission request of `kind` is granted.
 
@@ -268,6 +288,11 @@ def install_handlers(window, log: Callable[[str], None] = _log,
                 from Microsoft.Web.WebView2.Core import CoreWebView2PermissionKind, CoreWebView2PermissionState
 
                 core = sender.CoreWebView2
+                try:
+                    disable_browser_zoom(core.Settings)
+                    sender.ZoomFactor = 1.0
+                except Exception as exc:  # pragma: no cover - needs a live WebView2
+                    log(f"could not disable the browser zoom: {type(exc).__name__}: {exc}")
 
                 def on_permission(_sender, request):
                     granted = permission_decision(request.PermissionKind, CoreWebView2PermissionKind)

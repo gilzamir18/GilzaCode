@@ -71,6 +71,14 @@ def test_require_runtime_raises_instead_of_falling_back_to_mshtml(monkeypatch):
         wv.require_runtime()
 
 
+def test_pinch_and_ctrl_wheel_zoom_are_turned_off():
+    # pywebview turns zoom control on; pinch zoom crops the window (top bar off screen).
+    settings = types.SimpleNamespace(IsZoomControlEnabled=True, IsPinchZoomEnabled=True)
+    wv.disable_browser_zoom(settings)
+    assert settings.IsZoomControlEnabled is False
+    assert settings.IsPinchZoomEnabled is False
+
+
 def test_only_microphone_and_camera_are_granted():
     kinds = types.SimpleNamespace(Microphone="mic", Camera="cam", Geolocation="geo", ClipboardRead="clip")
     assert wv.permission_decision("mic", kinds)

@@ -1,4 +1,5 @@
-"""The Claude Code panel: whether `claude` is available, (re)starting it, pasting into it.
+"""The Claude Code panel: whether `claude` is available, (re)starting it, pasting into it,
+and installing the GilzaCode skills plugin (``claude_plugins.py``).
 
 The session itself is a PTY with the terminal id ``claude`` (``routes_terminal.py``),
 so the panel streams and types through the terminal endpoints.
@@ -17,6 +18,7 @@ import time
 
 from aiohttp import web
 
+from gilzacode import claude_plugins
 from gilzacode.claude_cli import ClaudeCliError, find_claude
 from gilzacode.server.app import error, read_json
 from gilzacode.server.routes_terminal import CLAUDE_ID, SESSIONS_KEY, _same_path, _session_for
@@ -94,3 +96,36 @@ async def paste(request: web.Request) -> web.Response:
         await asyncio.sleep(0.1)
     session.write(bracketed_paste(text))
     return web.json_response({"pasted": True})
+
+
+# ── The GilzaCode skills (a Claude Code plugin) ──────────────────────────────
+
+_PLUGIN_ERROR_STATUS = {"not_installed": 503, "timeout": 504}
+
+
+def _plugin_error(exc: ClaudeCliError) -> web.Response:
+    return error(_PLUGIN_ERROR_STATUS.get(exc.kind, 502), str(exc), kind=exc.kind)
+
+
+@routes.get("/api/claude/skills")
+async def skills_status(_request: web.Request) -> web.Response:
+    try:
+        return web.json_response(await claude_plugins.skills_status())
+    except ClaudeCliError as exc:
+        return _plugin_error(exc)
+
+
+@routes.post("/api/claude/skills/install")
+async def install_skills(_request: web.Request) -> web.Response:
+    try:
+        return web.json_response(await claude_plugins.install_skills())
+    except ClaudeCliError as exc:
+        return _plugin_error(exc)
+
+
+@routes.post("/api/claude/skills/update")
+async def update_skills(_request: web.Request) -> web.Response:
+    try:
+        return web.json_response(await claude_plugins.update_skills())
+    except ClaudeCliError as exc:
+        return _plugin_error(exc)

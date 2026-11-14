@@ -373,6 +373,42 @@ reports a dangling name when the line runs; the cut was driven by it.
 - **Errors:** a missing CLI answers 503, a timeout 504, and a model-reported
   error 502, each with its message.
 
+### GilzaCode skills (`claude_plugins.py`, `components/modals/ClaudeSkillsSection.jsx`)
+
+GilzaCode's skills for Claude Code live in their own repository,
+[`gilzamir18/GilzaCodeSkills`](https://github.com/gilzamir18/GilzaCodeSkills).
+That repository is both a Claude Code marketplace (`gilzacode`) and the one
+plugin it lists (`gilzacode-skills`, with `source: "./"`). The skills are under
+`skills/<name>/`. Settings > General installs it with one button.
+
+- **Claude Code installs it, not GilzaCode.** GilzaCode does not write into
+  `~/.claude`. It runs the CLI's plugin commands, so the result is the same as
+  `/plugin install`, and `/plugin` can list, disable or remove it:
+  - status: `claude plugin list --json`;
+  - install: `claude plugin install gilzacode-skills --marketplace
+    gilzamir18/GilzaCodeSkills --scope user --json`. This adds the marketplace
+    to the user's settings when it is missing;
+  - update: `claude plugin marketplace update gilzacode`, then
+    `claude plugin update gilzacode-skills@gilzacode`.
+- **User scope.** The skills serve every project, so the plugin is not
+  installed per project. The commands run in the home folder, never in a
+  project.
+- **Nothing is accepted on the user's behalf.** `-y` is never passed. It
+  would accept a command the marketplace declares without anyone seeing it.
+  This marketplace declares none.
+- **Errors are the CLI's.** Each `--json` command prints one result line with
+  `outcome`. A `failed` outcome, or no result line at all, is an error with the
+  CLI's message: 503 when `claude` is missing, 504 on a timeout (180 s, since
+  installing clones the repository), and 502 otherwise.
+- **A running session does not see it yet.** Claude Code reads plugins when a
+  session starts, so the interface tells the user to restart the panel's
+  session or type `/reload-plugins`.
+- **Endpoints:** `GET /api/claude/skills`, `POST /api/claude/skills/install`,
+  `POST /api/claude/skills/update`.
+- **Verified** against the real CLI and the published repository, in a
+  throwaway `CLAUDE_CONFIG_DIR`: install, list and update.
+  `test_live_install_from_github` repeats this with `GILZACODE_LIVE_CLAUDE=1`.
+
 ### Known limitation
 
 `/api/terminal/output` turns raw PTY bytes into text with a line-oriented
