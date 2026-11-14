@@ -298,6 +298,13 @@ reports a dangling name when the line runs; the cut was driven by it.
   rows below moved under a still pointer and the target kept changing. Moving
   between a node's own parts is not a `dragleave` (`relatedTarget`). Verified
   with real mouse drags in the window.
+- **A failed move is shown in a dialog**, not only in the Output panel, where
+  it went unnoticed. On Windows a folder cannot be renamed while anything inside
+  it is open, including a subfolder File Explorer keeps a watch handle on
+  (WinError 5), and an open file cannot be renamed (WinError 32).
+  `/api/file/rename` answers both with 409 and `code: "in_use"`, and the dialog
+  says to close the program holding it. Nothing is copied instead: the delete
+  half of a copy would hit the same refusal.
 - **Search** (`components/SearchSidebar.jsx`): a third sidebar tab beside the
   explorer and source control, also opened by Ctrl+Shift+F, over
   `/api/files/search` (§3). It searches as the user types (after a pause) and

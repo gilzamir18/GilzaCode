@@ -1,5 +1,7 @@
 """Project file endpoints: contracts kept from GilzaBots, every path confined to its project."""
 
+import sys
+
 import aiohttp
 import pytest
 
@@ -109,6 +111,34 @@ async def test_mkdir_copy_rename_delete(client, project):
     assert not (project / "figs2").exists()
     missing = await client.post("/api/file/delete", json={"projectPath": P(project), "filePath": "nope"})
     assert missing.status == 404
+
+
+@pytest.mark.skipif(not sys.platform.startswith("win"), reason="Windows refuses renaming what is open; POSIX does not")
+async def test_moving_something_in_use_is_reported_as_in_use(client, project):
+    """A folder with an open file inside cannot be renamed on Windows (WinError 5),
+    nor can the open file itself (WinError 32). Both answer code ``in_use``, so
+    the interface can say what to do, and nothing moves."""
+    (project / "proto" / "docs").mkdir(parents=True)
+    held = project / "proto" / "docs" / "open.txt"
+    held.write_text("x")
+    (project / "backup").mkdir()
+    with open(held, "rb"):  # a real handle, held as another program would
+        folder = await client.post("/api/file/rename", json={
+            "projectPath": P(project), "oldPath": "proto", "newPath": "backup/proto"})
+        assert folder.status == 409
+        body = await folder.json()
+        assert body["code"] == "in_use" and "WinError 5" in body["error"]
+
+        single = await client.post("/api/file/rename", json={
+            "projectPath": P(project), "oldPath": "proto/docs/open.txt", "newPath": "backup/open.txt"})
+        assert single.status == 409
+        body = await single.json()
+        assert body["code"] == "in_use" and "WinError 32" in body["error"]
+    assert held.exists() and not (project / "backup" / "proto").exists()
+
+    moved = await client.post("/api/file/rename", json={
+        "projectPath": P(project), "oldPath": "proto", "newPath": "backup/proto"})
+    assert moved.status == 200 and (project / "backup" / "proto" / "docs" / "open.txt").exists()
 
 
 def _browser_multipart(fields: dict, filename: str, content: bytes) -> tuple[bytes, str]:

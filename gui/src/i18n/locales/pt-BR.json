@@ -1257,6 +1257,8 @@
     "deleteSingleDir": "Tem certeza que deseja deletar o diretório \"{{name}}\"? Todos os arquivos internos serão removidos!",
     "moveDirectoryIntoItself": "Nao e possivel mover um diretorio para dentro dele mesmo.",
     "movePathFailed": "Falha ao mover {{path}}: {{error}}",
+    "movePathInUse": "O Windows não permitiu mover \"{{path}}\" porque outro programa está usando esse item ou algum arquivo ou pasta dentro dele. Um caso comum é o Explorador de Arquivos mostrando uma das pastas internas. Feche esse programa ou janela e tente de novo.",
+    "moveFailedTitle": "Não foi possível mover",
     "itemsMoved": "{{count}} item(s) movido(s) com sucesso.",
     "moveError": "Erro ao mover: {{error}}",
     "projectRegistered": "Projeto '{{name}}' registrado.",

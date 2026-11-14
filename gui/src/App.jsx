@@ -1837,6 +1837,9 @@ export default function App() {
     // A selected directory carries its selected contents along.
     const uniquePaths = outermostPaths(paths);
     let successCount = 0;
+    // A move is something the user just did by hand, so a failure is shown in
+    // a dialog, not only in the Output panel, where it went unnoticed.
+    const failures = [];
     for (const oldPath of uniquePaths) {
       const nodeName = oldPath.replace(/\\/g, '/').split('/').pop();
       const newPath = targetDirPath ? `${targetDirPath}/${nodeName}` : nodeName;
@@ -1853,14 +1856,23 @@ export default function App() {
           if (isFileInsidePath(selectedFile, oldPath)) setSelectedFile(prev => replaceFilePathPrefix(prev, oldPath, newPath));
         } else {
           const e = await res.json();
-          addLog('error', t('app.movePathFailed', { path: oldPath, error: e.error }));
+          const message = t('app.movePathFailed', { path: oldPath, error: e.error });
+          addLog('error', message);
+          failures.push(e.code === 'in_use' ? t('app.movePathInUse', { path: oldPath }) : message);
         }
-      } catch (err) { addLog('error', t('app.moveError', { error: err.message })); }
+      } catch (err) {
+        const message = t('app.moveError', { error: err.message });
+        addLog('error', message);
+        failures.push(message);
+      }
     }
     if (successCount > 0) {
       addLog('info', t('app.itemsMoved', { count: successCount }));
       setSelectedNodes(new Set());
       await fetchFiles();
+    }
+    if (failures.length > 0) {
+      showAlert(failures.join('\n\n'), t('app.moveFailedTitle', 'Could not move'));
     }
   };
 

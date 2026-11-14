@@ -1257,6 +1257,8 @@
     "deleteSingleDir": "Are you sure you want to delete the directory \"{{name}}\"? All internal files will also be removed!",
     "moveDirectoryIntoItself": "Cannot move a directory inside itself.",
     "movePathFailed": "Failed to move {{path}}: {{error}}",
+    "movePathInUse": "Windows did not allow moving \"{{path}}\" because another program is using it, or a file or folder inside it. File Explorer showing one of its folders is a common case. Close that program or window and try again.",
+    "moveFailedTitle": "Could not move",
     "itemsMoved": "{{count}} item(s) moved successfully.",
     "moveError": "Error moving: {{error}}",
     "projectRegistered": "Project '{{name}}' registered.",

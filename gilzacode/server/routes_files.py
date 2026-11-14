@@ -272,9 +272,19 @@ async def rename_path(request: web.Request) -> web.Response:
         os.makedirs(os.path.dirname(full_new), exist_ok=True)
         os.rename(full_old, full_new)
     except OSError as exc:
+        if getattr(exc, "winerror", None) in WINDOWS_IN_USE_ERRORS:
+            return error(409, str(exc), code="in_use")
         return error(500, str(exc))
     notify_change(project_path)
     return web.json_response({"success": True})
+
+
+#: Windows' refusals to rename something that another program holds open.
+#: 32 is a sharing violation (an open file). 5, access denied, is what renaming
+#: a folder gets while anything inside it is open, a folder File Explorer is
+#: watching included; measured on 2026-11-14 with a project folder whose
+#: subfolder Explorer kept a handle to.
+WINDOWS_IN_USE_ERRORS = (5, 32)
 
 
 @routes.post("/api/file/open-explorer")
