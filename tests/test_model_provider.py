@@ -111,7 +111,8 @@ async def test_a_headless_call_gets_the_provider(tmp_path, monkeypatch):
 
 async def test_the_endpoint_reads_and_validates(client):
     data = await (await client.get("/api/settings/model-provider")).json()
-    assert data == {"provider": model_provider.DEFAULTS, "kinds": ["anthropic", "ollama"]}
+    assert data == {"provider": {**model_provider.DEFAULTS, "ollama_api_key_set": False},
+                    "kinds": ["anthropic", "ollama"], "ollama_cloud_url": "https://ollama.com"}
     refused = await client.post("/api/settings/model-provider", json={**OLLAMA, "ollama_model": ""})
     assert refused.status == 400 and "Choose the Ollama model" in (await refused.json())["error"]
     assert model_provider.load() == model_provider.DEFAULTS  # nothing was stored
@@ -132,6 +133,52 @@ async def test_a_change_replaces_the_running_session_and_a_no_op_keeps_it(client
     assert same["restarted"] is False and current.is_running
 
 
+CLOUD = {**OLLAMA, "ollama_url": "https://ollama.com", "ollama_model": "glm-5.3"}
+
+
+def test_an_api_key_is_the_bearer_token_and_stays_out_of_settings(isolated_home):
+    model_provider.save({**CLOUD, "ollama_api_key": " sk-ollama-1 "})
+    env = claude_cli.child_environment()
+    assert env["ANTHROPIC_BASE_URL"] == "https://ollama.com"
+    assert env["ANTHROPIC_AUTH_TOKEN"] == "sk-ollama-1" and env["ANTHROPIC_API_KEY"] == ""
+    assert "sk-ollama-1" not in settings.settings_path().read_text(encoding="utf-8")
+    assert model_provider.api_key_path().read_text(encoding="utf-8") == "sk-ollama-1"
+    if sys.platform != "win32":
+        assert model_provider.api_key_path().stat().st_mode & 0o077 == 0
+
+
+def test_an_absent_key_field_keeps_the_key_and_an_empty_one_removes_it():
+    model_provider.save({**CLOUD, "ollama_api_key": "sk-1"})
+    model_provider.save({**CLOUD, "ollama_fast_model": "gemma4"})
+    assert model_provider.load_api_key() == "sk-1"
+    model_provider.save({**OLLAMA, "ollama_api_key": ""})
+    assert model_provider.load_api_key() == "" and not model_provider.api_key_path().exists()
+    assert claude_cli.child_environment()["ANTHROPIC_AUTH_TOKEN"] == "ollama"
+
+
+def test_the_anthropic_provider_never_sends_the_key():
+    model_provider.save({**CLOUD, "kind": "anthropic", "ollama_api_key": "sk-1"})
+    assert model_provider.current_environment() == {}
+
+
+def test_an_invalid_key_is_refused_before_anything_is_stored():
+    with pytest.raises(ValueError, match="spaces"):
+        model_provider.save({**CLOUD, "ollama_api_key": "sk 1"})
+    assert model_provider.load() == model_provider.DEFAULTS and model_provider.load_api_key() == ""
+
+
+async def test_the_endpoint_never_returns_the_key_and_a_new_key_restarts(client, project):
+    sessions = client.server.app[SESSIONS_KEY]
+    saved = await (await client.post("/api/settings/model-provider", json={**CLOUD, "ollama_api_key": "sk-1"})).json()
+    assert saved["provider"]["ollama_api_key_set"] is True and "ollama_api_key" not in saved["provider"]
+    read = await (await client.get("/api/settings/model-provider")).json()
+    assert "sk-1" not in json.dumps(read)
+
+    sessions[CLAUDE_ID] = old = FakeSession(str(project))
+    rotated = await (await client.post("/api/settings/model-provider", json={**CLOUD, "ollama_api_key": "sk-2"})).json()
+    assert rotated["restarted"] is True and not old.is_running
+
+
 def _free_port() -> int:
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
@@ -140,13 +187,22 @@ def _free_port() -> int:
 
 @pytest.fixture
 async def fake_ollama():
-    """A server answering ``/api/tags`` in the shape Ollama documents."""
+    """A server answering ``/api/tags`` in the shape Ollama documents (and ollama.com returns,
+    with ``capabilities``). It records the Authorization headers it receives; with
+    ``required_key`` set it refuses requests without that key, as ollama.com does."""
     tags = {"models": [
         {"name": "qwen3-coder:latest", "model": "qwen3-coder:latest", "size": 1,
          "details": {"family": "qwen3", "parameter_size": "30.5B"}},
-        {"name": "gemma4:cloud", "model": "gemma4:cloud", "remote_host": "https://ollama.com:443", "details": {}},
+        {"name": "gemma4:cloud", "model": "gemma4:cloud", "remote_host": "https://ollama.com:443", "details": {},
+         "capabilities": ["completion", "tools"]},
+        {"name": "embed", "model": "embed", "details": {}, "capabilities": ["embedding"]},
     ]}
-    async def list_tags(_request):
+    state = {"auth": [], "required_key": ""}
+
+    async def list_tags(request):
+        state["auth"].append(request.headers.get("Authorization"))
+        if state["required_key"] and request.headers.get("Authorization") != f"Bearer {state['required_key']}":
+            return web.json_response({"error": "unauthorized"}, status=401)
         return web.json_response(tags)
 
     app = web.Application()
@@ -155,22 +211,50 @@ async def fake_ollama():
     await runner.setup()
     port = _free_port()
     await web.TCPSite(runner, "127.0.0.1", port).start()
-    yield f"http://127.0.0.1:{port}"
+    state["url"] = f"http://127.0.0.1:{port}"
+    yield state
     await runner.cleanup()
 
 
+LIST = "/api/settings/model-provider/ollama-models"
+
+
 async def test_the_ollama_models_are_listed(client, fake_ollama):
-    response = await client.get("/api/settings/model-provider/ollama-models", params={"url": fake_ollama + "/"})
+    url = fake_ollama["url"]
+    response = await client.post(LIST, json={"url": url + "/"})
     assert response.status == 200
-    assert await response.json() == {"url": fake_ollama, "models": [
-        {"name": "qwen3-coder:latest", "parameter_size": "30.5B", "remote": False},
-        {"name": "gemma4:cloud", "parameter_size": "", "remote": True},
+    assert await response.json() == {"url": url, "models": [
+        {"name": "qwen3-coder:latest", "parameter_size": "30.5B", "remote": False, "tools": None},
+        {"name": "gemma4:cloud", "parameter_size": "", "remote": True, "tools": True},
+        {"name": "embed", "parameter_size": "", "remote": False, "tools": False},
     ]}
+    assert fake_ollama["auth"] == [None]  # no key, no header
+
+
+async def test_the_stored_key_goes_only_to_the_url_it_was_saved_with(client, fake_ollama):
+    url = fake_ollama["url"]
+    fake_ollama["required_key"] = "sk-1"
+    model_provider.save({**CLOUD, "ollama_url": url, "ollama_api_key": "sk-1"})
+    assert (await client.post(LIST, json={"url": url})).status == 200
+    assert fake_ollama["auth"] == ["Bearer sk-1"]
+
+    model_provider.save({**CLOUD, "ollama_url": "https://ollama.com"})  # the key now belongs to ollama.com
+    refused = await client.post(LIST, json={"url": url})
+    body = await refused.json()
+    assert refused.status == 502 and body["kind"] == "ollama_unauthorized" and "needs an API key" in body["error"]
+    assert fake_ollama["auth"][-1] is None
+
+
+async def test_a_typed_key_is_used_and_a_wrong_one_is_reported(client, fake_ollama):
+    fake_ollama["required_key"] = "sk-right"
+    wrong = await client.post(LIST, json={"url": fake_ollama["url"], "api_key": "sk-wrong"})
+    assert wrong.status == 502 and "Check the API key" in (await wrong.json())["error"]
+    right = await client.post(LIST, json={"url": fake_ollama["url"], "api_key": "sk-right"})
+    assert right.status == 200
 
 
 async def test_an_absent_ollama_or_a_bad_url_is_reported(client):
-    absent = await client.get("/api/settings/model-provider/ollama-models",
-                              params={"url": f"http://127.0.0.1:{_free_port()}"})
+    absent = await client.post(LIST, json={"url": f"http://127.0.0.1:{_free_port()}"})
     assert absent.status == 502 and (await absent.json())["kind"] == "ollama_unreachable"
-    bad = await client.get("/api/settings/model-provider/ollama-models", params={"url": "ftp://x"})
+    bad = await client.post(LIST, json={"url": "ftp://x"})
     assert bad.status == 400

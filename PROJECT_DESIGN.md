@@ -412,7 +412,9 @@ plugin it lists (`gilzacode-skills`, with `source: "./"`). The skills are under
 ### Model provider (`model_provider.py`, `components/modals/ClaudeModelSection.jsx`)
 
 Settings > General chooses which model service Claude Code uses when GilzaCode
-starts it: the Anthropic account (the default) or an Ollama server.
+starts it: the Anthropic account (the default) or Ollama, either a local server
+(whose `:cloud` models run on ollama.com once it is signed in with
+`ollama signin`) or `https://ollama.com` itself, which needs an API key.
 
 - **One place.** Every `claude` process GilzaCode starts (the panel's session,
   Translate, Look up, the plugin commands) gets its environment from
@@ -424,10 +426,16 @@ starts it: the Anthropic account (the default) or an Ollama server.
 - **Anthropic adds nothing.** Claude Code uses the claude.ai login, or
   variables the user set themselves (a gateway's `ANTHROPIC_BASE_URL` stays).
 - **Ollama** gets the variables Ollama documents for Claude Code
-  (`ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN=ollama`, an empty
-  `ANTHROPIC_API_KEY`). The bearer token ranks above a claude.ai login in
-  Claude Code's authentication order, so the login stays stored and is used
-  again after switching back.
+  (`ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, an empty
+  `ANTHROPIC_API_KEY`). The token is the API key, or `ollama` without one.
+  It ranks above a claude.ai login in Claude Code's authentication order, so
+  the login stays stored and is used again after switching back.
+- **The API key is a credential.** It is kept out of `settings.json`, in
+  `<gilzacode home>/ollama_api_key`, restricted to the user (mode 0600 set
+  before the key is written; on Windows the profile's ACL). The interface
+  never receives it, only `ollama_api_key_set`. A POST without
+  `ollama_api_key` keeps the stored key, `""` removes it, a value replaces it.
+  The Anthropic provider never sends it.
 - **Aliases are mapped.** GilzaCode passes `haiku` and `sonnet`, and Claude
   Code's agents use aliases too, but Ollama knows only its own model names.
   `ANTHROPIC_MODEL`, `ANTHROPIC_DEFAULT_{OPUS,SONNET,FABLE}_MODEL` and
@@ -445,17 +453,26 @@ starts it: the Anthropic account (the default) or an Ollama server.
   alone). The settings modal tells `App`, which hands the panel a
   `restartRequest`; the panel starts the new session unless it had none to
   replace (ended, or `claude` missing). `/resume` brings the conversation back.
-- **Listing models is not a model call.** `GET
-  /api/settings/model-provider/ollama-models?url=` reads the server's
-  `/api/tags` (5 s timeout) to fill the model list and test the URL. No prompt
-  is sent. An absent server is a 502 (`ollama_unreachable`), a timeout a 504.
+- **Listing models is not a model call.** `POST
+  /api/settings/model-provider/ollama-models` (`{url, api_key?}`, a POST so
+  the key stays out of URLs) reads the server's `/api/tags` (5 s timeout) to
+  suggest models and test the URL. No prompt is sent. Without `api_key`, the
+  stored key is sent only to the URL it was saved with, so testing another
+  server never hands it the key. ollama.com answers `/api/tags` in the same
+  shape, with `capabilities` (checked 2026-11-13); a model whose list lacks
+  `tools` is flagged, since Claude Code works through tools, and a server
+  that reports no capabilities gives "unknown". An absent server is a 502
+  (`ollama_unreachable`), a refused key a 502 (`ollama_unauthorized`), a
+  timeout a 504. The model fields accept any name, so a model can be named
+  before the server can be listed.
 - **Not controlled:** the context length. Ollama sets it on the server
   (`OLLAMA_CONTEXT_LENGTH`); the settings say that Claude Code needs 64k or more.
 - **Endpoints:** `GET/POST /api/settings/model-provider`,
-  `GET /api/settings/model-provider/ollama-models`. The panel's header shows
+  `POST /api/settings/model-provider/ollama-models`. The panel's header shows
   `Ollama · <model>` while Ollama is chosen.
 - **Not verified against a real Ollama** yet: the tests use a fake `/api/tags`
-  server and a fake `claude` that records its environment.
+  server (with and without a required key) and a fake `claude` that records
+  its environment.
 
 ### Known limitation
 

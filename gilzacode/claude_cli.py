@@ -77,14 +77,14 @@ def child_environment(base: dict | None = None) -> dict:
     from gilzacode.subprocess_utils import host_environment
 
     try:
-        provider = model_provider.load()
+        provider_env = model_provider.current_environment()
     except ValueError as exc:
         raise ClaudeCliError(f"The model provider saved in settings.json is not valid: {exc}. "
                              "Choose it again in Settings > General.", kind="config") from None
     env = host_environment(base)
     for name in NESTED_SESSION_MARKERS:
         env.pop(name, None)
-    env.update(model_provider.environment(provider))
+    env.update(provider_env)
     return env
 
 
