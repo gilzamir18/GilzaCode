@@ -14,6 +14,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from gilzacode import model_provider
 from gilzacode.paths import gilzacode_home, write_text_atomic
 
 DEFAULTS: dict[str, Any] = {
@@ -22,6 +23,7 @@ DEFAULTS: dict[str, Any] = {
     "show_hidden_workspace_files": False,
     "last_active_project": "",
     "client_prefs": {},
+    "model_provider": dict(model_provider.DEFAULTS),
 }
 
 UI_SCALE_MIN = 0.8

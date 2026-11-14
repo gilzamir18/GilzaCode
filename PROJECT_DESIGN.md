@@ -108,7 +108,7 @@ them, so the front-end ports unchanged. Projects moved from
 ## 4. Global data (`~/.gilzacode`, or `GILZACODE_HOME`)
 
 - `settings.json`: language, interface scale, workspace options, the last
-  project, and `client_prefs`. The interface's preferences are stored here,
+  project, the model provider (§8), and `client_prefs`. The interface's preferences are stored here,
   not in localStorage, because the port (and so the page origin and its
   localStorage) can change between launches (GilzaBots §2.1).
 - `projects.json`: the project registry. A project is a name and a folder.
@@ -408,6 +408,54 @@ plugin it lists (`gilzacode-skills`, with `source: "./"`). The skills are under
 - **Verified** against the real CLI and the published repository, in a
   throwaway `CLAUDE_CONFIG_DIR`: install, list and update.
   `test_live_install_from_github` repeats this with `GILZACODE_LIVE_CLAUDE=1`.
+
+### Model provider (`model_provider.py`, `components/modals/ClaudeModelSection.jsx`)
+
+Settings > General chooses which model service Claude Code uses when GilzaCode
+starts it: the Anthropic account (the default) or an Ollama server.
+
+- **One place.** Every `claude` process GilzaCode starts (the panel's session,
+  Translate, Look up, the plugin commands) gets its environment from
+  `claude_cli.child_environment`, and the provider is applied there. Nothing
+  is written into `~/.claude` or into the user's environment, so a `claude`
+  run outside GilzaCode is unaffected. Translate and Look up run with
+  `--setting-sources ""`, so the environment is also the only way to reach
+  them.
+- **Anthropic adds nothing.** Claude Code uses the claude.ai login, or
+  variables the user set themselves (a gateway's `ANTHROPIC_BASE_URL` stays).
+- **Ollama** gets the variables Ollama documents for Claude Code
+  (`ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN=ollama`, an empty
+  `ANTHROPIC_API_KEY`). The bearer token ranks above a claude.ai login in
+  Claude Code's authentication order, so the login stays stored and is used
+  again after switching back.
+- **Aliases are mapped.** GilzaCode passes `haiku` and `sonnet`, and Claude
+  Code's agents use aliases too, but Ollama knows only its own model names.
+  `ANTHROPIC_MODEL`, `ANTHROPIC_DEFAULT_{OPUS,SONNET,FABLE}_MODEL` and
+  `CLAUDE_CODE_SUBAGENT_MODEL` get the chosen model; `ANTHROPIC_DEFAULT_HAIKU_MODEL`
+  gets the "fast" model, or the same one. A full model id written into
+  `translate_model` / `lookup_model` is still passed as it is.
+- **Validated, never guessed.** Unknown fields, an unknown kind, a URL that is
+  not http(s) with a host, or Ollama without a model are refused with the
+  reason (400). An invalid provider found in `settings.json` stops `claude`
+  from starting with that reason (`ClaudeCliError`, kind `config`) instead of
+  falling back to another provider.
+- **A change replaces the session.** The panel's session was started with the
+  old environment, so saving a provider that changes it closes and forgets the
+  session (`routes_terminal.discard_claude_session`; shell tabs are left
+  alone). The settings modal tells `App`, which hands the panel a
+  `restartRequest`; the panel starts the new session unless it had none to
+  replace (ended, or `claude` missing). `/resume` brings the conversation back.
+- **Listing models is not a model call.** `GET
+  /api/settings/model-provider/ollama-models?url=` reads the server's
+  `/api/tags` (5 s timeout) to fill the model list and test the URL. No prompt
+  is sent. An absent server is a 502 (`ollama_unreachable`), a timeout a 504.
+- **Not controlled:** the context length. Ollama sets it on the server
+  (`OLLAMA_CONTEXT_LENGTH`); the settings say that Claude Code needs 64k or more.
+- **Endpoints:** `GET/POST /api/settings/model-provider`,
+  `GET /api/settings/model-provider/ollama-models`. The panel's header shows
+  `Ollama · <model>` while Ollama is chosen.
+- **Not verified against a real Ollama** yet: the tests use a fake `/api/tags`
+  server and a fake `claude` that records its environment.
 
 ### Known limitation
 

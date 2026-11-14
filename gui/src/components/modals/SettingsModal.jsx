@@ -11,6 +11,7 @@ import {
 import { useCustomDialog } from './CustomDialogProvider';
 import SpeechVoiceManager from './SpeechVoiceManager.jsx';
 import ClaudeSkillsSection from './ClaudeSkillsSection.jsx';
+import ClaudeModelSection from './ClaudeModelSection.jsx';
 import i18n from '../../i18n/index.js';
 import { setPreference } from '../../utils/preferences';
 import { openExternal } from '../../utils/openExternal';
@@ -61,7 +62,7 @@ export default function SettingsModal({
   thoughtContextTokens,
   chatThoughtPreviewTokens,
   onChatThoughtPreviewTokensChange,
-  onThoughtContextTokensChange, onSpeechSettingsChange, }) {
+  onThoughtContextTokensChange, onSpeechSettingsChange, onClaudeSessionReplaced, }) {
   const { t } = useTranslation();
   const { showAlert } = useCustomDialog();
   const [selectedLang, setSelectedLang] = React.useState('');
@@ -525,6 +526,8 @@ export default function SettingsModal({
               </div>
 
               <ClaudeSkillsSection />
+
+              <ClaudeModelSection onSessionReplaced={onClaudeSessionReplaced} />
             </>
           )}
 

@@ -230,6 +230,9 @@ export default function App() {
   // Text handed to the Claude Code panel to paste into its prompt ({ seq, text }).
   const [claudePromptRequest, setClaudePromptRequest] = useState(null);
   const claudePromptSeqRef = useRef(0);
+  // Asks the panel to start a new Claude Code session ({ seq }): saving another
+  // model provider closed the one started with the old environment.
+  const [claudeRestartRequest, setClaudeRestartRequest] = useState(null);
   const [activeSidebarTab, setActiveSidebarTab] = useState('explorer');
   // The Search tab's query, options and last results, kept here so they
   // survive switching sidebar tabs; the token focuses its field (Ctrl+Shift+F).
@@ -2490,6 +2493,7 @@ export default function App() {
               theme={theme}
               uiScale={uiScale}
               promptRequest={claudePromptRequest}
+              restartRequest={claudeRestartRequest}
               onClose={() => setIsChatVisible(false)}
             />
           )}
@@ -2540,6 +2544,7 @@ export default function App() {
             theme={theme}
             uiScale={uiScale}
             promptRequest={claudePromptRequest}
+            restartRequest={claudeRestartRequest}
             onClose={() => (isChatLayout ? setLayoutMode('ide') : setIsChatVisible(false))}
           />
         )}
@@ -2581,6 +2586,7 @@ export default function App() {
       {isSettingsOpen && (
         <SettingsModal
           onSpeechSettingsChange={bumpSpeechSettings}
+          onClaudeSessionReplaced={() => setClaudeRestartRequest(r => ({ seq: (r?.seq || 0) + 1 }))}
           onClose={() => setIsSettingsOpen(false)}
           settingsTab={settingsTab}
           setSettingsTab={setSettingsTab}

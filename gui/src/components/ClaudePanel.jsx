@@ -21,7 +21,7 @@ const postJson = (url, body) => fetch(url, {
 // submitted: the user reviews it and presses Enter. It is pasted on its own only
 // into a session that has been running for a while and is quiet; otherwise it
 // waits here, visible, with a button to paste it.
-export default function ClaudePanel({ width, fillContainer, activeProject, promptRequest, onClose, theme, uiScale }) {
+export default function ClaudePanel({ width, fillContainer, activeProject, promptRequest, restartRequest, onClose, theme, uiScale }) {
   const { t } = useTranslation();
   const projectPath = activeProject?.project_path || '';
   const [staged, setStaged] = useState('');
@@ -33,6 +33,17 @@ export default function ClaudePanel({ width, fillContainer, activeProject, promp
   // server then ends the stream with an `ended` event and the panel says so at once.
   const [reconnecting, setReconnecting] = useState(false);
   const termRef = useRef(null);
+  // The model service the session talks to, shown when it is not Anthropic's.
+  const [provider, setProvider] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/settings/model-provider')
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => { if (!cancelled) setProvider(data?.provider || null); })
+      .catch(() => { if (!cancelled) setProvider(null); });
+    return () => { cancelled = true; };
+  }, [restartRequest?.seq]);
 
   const readStatus = useCallback(async () => {
     if (!projectPath) return null;
@@ -94,6 +105,19 @@ export default function ClaudePanel({ width, fillContainer, activeProject, promp
     setConnectionKey(k => k + 1);
   };
 
+  // Saving another model provider closed the session (it had the old
+  // environment). Start the new one, unless there was none to replace: the
+  // user ended it, or `claude` is missing. A panel mounted after the change
+  // (another layout, reopened) already starts with the new environment.
+  const handledRestartSeqRef = useRef(restartRequest?.seq || 0);
+  useEffect(() => {
+    const seq = restartRequest?.seq || 0;
+    if (seq <= handledRestartSeqRef.current) return;
+    handledRestartSeqRef.current = seq;
+    if (!projectPath || problem || ended) return;
+    restart();
+  }, [restartRequest?.seq]);
+
   const onConnectionChange = useCallback((state) => setReconnecting(state === 'reconnecting'), []);
 
   const onStreamClosed = useCallback(async () => {
@@ -114,6 +138,14 @@ export default function ClaudePanel({ width, fillContainer, activeProject, promp
       <div className="vscode-sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px' }}>
         <Bot size={16} aria-hidden="true" />
         <span className="vscode-sidebar-title" style={{ flex: 1 }}>{t('claudePanel.title', 'Claude Code')}</span>
+        {provider?.kind === 'ollama' && (
+          <span
+            title={t('claudePanel.ollamaBadgeTitle', { url: provider.ollama_url, defaultValue: 'Claude Code is using Ollama at {{url}}. Change it in Settings > General.' })}
+            style={{ fontSize: 11, padding: '1px 6px', borderRadius: 8, border: '1px solid var(--vscode-border)', opacity: 0.85, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '50%' }}
+          >
+            Ollama · {provider.ollama_model}
+          </span>
+        )}
         {projectPath && !problem && (
           <button type="button" className="git-icon-button" onClick={restart}
             title={t('claudePanel.restart', 'Start a new Claude Code session')}>

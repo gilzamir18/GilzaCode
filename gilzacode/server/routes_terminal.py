@@ -78,6 +78,21 @@ def close_sessions_in(app: web.Application, folder: str) -> None:
             session.close()
 
 
+def discard_claude_session(app: web.Application) -> bool:
+    """Close the Claude Code session and forget it; return whether one was running.
+
+    Used when what the session was started with has changed (the model
+    provider): the next stream or ``/api/claude/start`` then starts a new one,
+    with the current environment, instead of reconnecting to this one.
+    """
+    session = app[SESSIONS_KEY].pop(CLAUDE_ID, None)
+    if session is None:
+        return False
+    was_running = session.is_running
+    session.close()
+    return was_running
+
+
 def _session_for(request: web.Request, term_id: str, project_path: str | None,
                  restart: bool = False) -> TerminalSession | None:
     """The tab's running session in `project_path`, started when needed; None without a project.

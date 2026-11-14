@@ -67,11 +67,24 @@ def find_claude() -> str:
 
 
 def child_environment(base: dict | None = None) -> dict:
+    """The environment of every `claude` process GilzaCode starts.
+
+    The model provider chosen in Settings (``model_provider.py``) is applied
+    here, so the panel's session, Translate, Look up and the plugin commands
+    all use the same one.
+    """
+    from gilzacode import model_provider
     from gilzacode.subprocess_utils import host_environment
 
+    try:
+        provider = model_provider.load()
+    except ValueError as exc:
+        raise ClaudeCliError(f"The model provider saved in settings.json is not valid: {exc}. "
+                             "Choose it again in Settings > General.", kind="config") from None
     env = host_environment(base)
     for name in NESTED_SESSION_MARKERS:
         env.pop(name, None)
+    env.update(model_provider.environment(provider))
     return env
 
 
