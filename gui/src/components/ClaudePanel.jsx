@@ -1,9 +1,19 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bot, ClipboardPaste, Loader2, RotateCcw, Trash2, X } from 'lucide-react';
+import { Bot, ClipboardPaste, Loader2, RotateCcw, Trash2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import TerminalInstance from './TerminalInstance';
 import ClaudeCliSetup from './ClaudeCliSetup';
-import { TERMINAL_FONT_SIZE_DEFAULT } from '../hooks/useTerminal';
+import {
+  TERMINAL_FONT_SIZE_DEFAULT,
+  TERMINAL_FONT_SIZE_MAX,
+  TERMINAL_FONT_SIZE_MIN,
+  clampTerminalFontSize,
+} from '../hooks/useTerminal';
+import { getPreference, setPreference } from '../utils/preferences';
+
+// The panel's font size is its own preference, apart from the bottom panel's
+// shell terminals: Claude Code is read at length, a shell is glanced at.
+const CLAUDE_PANEL_FONT_SIZE_STORAGE_KEY = 'claudePanelFontSize';
 
 // How long Claude Code must have been running before a staged prompt is pasted
 // on its own. A session the panel has just started may still be showing a
@@ -36,6 +46,20 @@ export default function ClaudePanel({ width, fillContainer, activeProject, promp
   // server then ends the stream with an `ended` event and the panel says so at once.
   const [reconnecting, setReconnecting] = useState(false);
   const termRef = useRef(null);
+  // Claude Code is a terminal program and has no text size of its own, so the
+  // panel zooms the xterm font (on top of the interface scale, utils/uiScale.js).
+  const [fontSize, setFontSize] = useState(() =>
+    clampTerminalFontSize(getPreference(CLAUDE_PANEL_FONT_SIZE_STORAGE_KEY, TERMINAL_FONT_SIZE_DEFAULT)));
+  const changeFontSize = useCallback((next) => {
+    setFontSize((prev) => {
+      const clamped = clampTerminalFontSize(typeof next === 'function' ? next(prev) : next);
+      setPreference(CLAUDE_PANEL_FONT_SIZE_STORAGE_KEY, clamped);
+      return clamped;
+    });
+  }, []);
+  const zoomIn = useCallback(() => changeFontSize((prev) => prev + 1), [changeFontSize]);
+  const zoomOut = useCallback(() => changeFontSize((prev) => prev - 1), [changeFontSize]);
+  const resetZoom = useCallback(() => changeFontSize(TERMINAL_FONT_SIZE_DEFAULT), [changeFontSize]);
   // The model service the session talks to, shown when it is not Anthropic's.
   const [provider, setProvider] = useState(null);
 
@@ -154,6 +178,27 @@ export default function ClaudePanel({ width, fillContainer, activeProject, promp
             Ollama · {provider.ollama_model}
           </span>
         )}
+        {projectPath && !problem && !ended && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <button type="button" className="git-icon-button" onClick={zoomOut}
+              disabled={fontSize <= TERMINAL_FONT_SIZE_MIN}
+              style={{ opacity: fontSize <= TERMINAL_FONT_SIZE_MIN ? 0.4 : 1 }}
+              title={t('claudePanel.zoomOut', 'Decrease the Claude Code font size (Ctrl+-)')}>
+              <ZoomOut size={14} />
+            </button>
+            <button type="button" className="git-icon-button" onClick={resetZoom}
+              style={{ fontSize: 11, minWidth: 32 }}
+              title={t('claudePanel.zoomReset', 'Reset the Claude Code font size (Ctrl+0)')}>
+              {fontSize}px
+            </button>
+            <button type="button" className="git-icon-button" onClick={zoomIn}
+              disabled={fontSize >= TERMINAL_FONT_SIZE_MAX}
+              style={{ opacity: fontSize >= TERMINAL_FONT_SIZE_MAX ? 0.4 : 1 }}
+              title={t('claudePanel.zoomIn', 'Increase the Claude Code font size (Ctrl++)')}>
+              <ZoomIn size={14} />
+            </button>
+          </div>
+        )}
         {projectPath && !problem && (
           <button type="button" className="git-icon-button" onClick={restart}
             title={t('claudePanel.restart', 'Start a new Claude Code session')}>
@@ -211,8 +256,11 @@ export default function ClaudePanel({ width, fillContainer, activeProject, promp
             isTerminalCollapsed={false}
             theme={theme}
             isActive
-            fontSize={TERMINAL_FONT_SIZE_DEFAULT}
+            fontSize={fontSize}
             uiScale={uiScale}
+            onZoomIn={zoomIn}
+            onZoomOut={zoomOut}
+            onZoomReset={resetZoom}
             onMount={(term) => { termRef.current = term; }}
             redrawPromptOnShow={false}
             onStreamClosed={onStreamClosed}

@@ -399,6 +399,12 @@ was missing.
   `CLAUDE_CODE_ENTRYPOINT` and `CLAUDE_CODE_CHILD_SESSION` are removed from the
   child's environment: GilzaCode's Claude is not a child of whichever Claude
   session launched GilzaCode.
+- **Text size.** Claude Code has no text size of its own; the terminal it
+  runs in sets it. The panel header zooms the xterm font (−, size, +; Ctrl+-,
+  Ctrl+0, Ctrl++ while the panel has focus, as in the bottom panel's
+  terminals), within the same 8–28 px range. The size is its own preference
+  (`claudePanelFontSize`), separate from the shell terminals'
+  (`terminalFontSize`), and applies on top of the interface scale.
 
 ### Staged prompts are pasted, never submitted
 
