@@ -75,6 +75,19 @@ async def test_static_files_cannot_escape_their_folder(anon, tmp_path, path):
     assert "TOP SECRET" not in await response.text()
 
 
+async def test_the_shell_is_revalidated_and_hashed_assets_are_immutable(anon, server):
+    """A cached index.html kept the window on a previous build after an update."""
+    static = server.app[server_app.STATIC_DIR_KEY]
+    (static / "assets").mkdir()
+    (static / "assets" / "index-abc123.js").write_text("console.log(2)", encoding="utf-8")
+    for path in ("/", "/index.html", "/some/route", "/app.js"):
+        assert (await anon.get(path)).headers["Cache-Control"] == "no-cache", path
+    hashed = await anon.get("/assets/index-abc123.js")
+    assert hashed.status == 200 and hashed.headers["Cache-Control"] == "public, max-age=31536000, immutable"
+    # A missing asset falls back to the shell, which must not be cached as that asset.
+    assert (await anon.get("/assets/index-gone.js")).headers["Cache-Control"] == "no-cache"
+
+
 async def test_api_responses_are_not_cached(client):
     response = await client.get("/api/app/environment")
     assert response.headers["Cache-Control"] == "no-store"

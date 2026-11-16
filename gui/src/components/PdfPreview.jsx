@@ -11,8 +11,10 @@ import PdfContextMenu, { ANNOTATION_COLORS } from './PdfContextMenu';
 import TranslationPopup from './TranslationPopup';
 import SpeechPopup from './SpeechPopup';
 import SnippetQueryPopup from './SnippetQueryPopup';
+import TexChangePopup from './TexChangePopup';
 import { useSnippetTranslation } from '../hooks/useSnippetTranslation';
 import { useSnippetQuery } from '../hooks/useSnippetQuery';
+import { useTexChange } from '../hooks/useTexChange';
 import { useSnippetSpeech } from '../hooks/useSnippetSpeech';
 import { readSelectionWithin } from '../utils/documentSelection';
 import PdfAnnotationLayer from './PdfAnnotationLayer';
@@ -42,7 +44,14 @@ const VIEW_RESTORE_ATTEMPTS = 100;
 // `onViewStateChange` reports the same shape as the user scrolls and zooms. The
 // owner keeps it per document so a viewer unmounted by a tab switch comes back
 // where it was left (see utils/pdfViewState.js).
-const PdfPreview = forwardRef(({ chatModel = '', base64Pdf, sourceUrl, directUrl, isCompiling, errorLog, activeProject, selectedFile, onSyncTexNavigate, onCollapse, onDocumentReady, latexCompileProblem, onFixLatexProblem, onLatexCompileError, onLatexCompileSuccess, onAskAboutPdf, speechSettingsSignal = 0, isAgentRunning = false, uiScale = 1, initialViewState = null, onViewStateChange }, ref) => {
+//
+// "Change .tex" (GLOSSARY.md) needs the PDF to be an Associated PDF. A PDF
+// opened on its own finds its .tex here (/api/latex/pdf-source); the compiled
+// preview beside a .tex gets it from the editor as `associatedPdf`
+// ({ pdfPath, sourceTex }). `isFileUnsaved(path)` lets an apply refuse a file
+// with unsaved edits, `onTexFileWritten(path, content)` updates the editor's
+// buffers after one, and `onPdfRebuilt()` reloads the compiled preview.
+const PdfPreview = forwardRef(({ chatModel = '', base64Pdf, sourceUrl, directUrl, isCompiling, errorLog, activeProject, selectedFile, onSyncTexNavigate, onCollapse, onDocumentReady, latexCompileProblem, onFixLatexProblem, onLatexCompileError, onLatexCompileSuccess, onAskAboutPdf, speechSettingsSignal = 0, isAgentRunning = false, uiScale = 1, initialViewState = null, onViewStateChange, associatedPdf = null, isFileUnsaved, onTexFileWritten, onPdfRebuilt }, ref) => {
   const { t, i18n } = useTranslation();
   const { showAlert, showConfirm } = useCustomDialog();
   const [numPages, setNumPages] = useState(null);
@@ -102,6 +111,23 @@ const PdfPreview = forwardRef(({ chatModel = '', base64Pdf, sourceUrl, directUrl
     projectPath: activeProject?.project_path || '',
   });
   const lookupSelectionRef = useRef([]);
+
+  // "Change .tex": the apply is defined further down, where the rebuild is; the
+  // hook gets a stable function that calls the latest one.
+  const applyTexProposalRef = useRef(null);
+  const applyTexProposal = useCallback((proposal) => applyTexProposalRef.current(proposal), []);
+  const {
+    state: texChange,
+    open: openTexChange,
+    setDraft: setTexChangeDraft,
+    submit: submitTexChange,
+    apply: applyTexChange,
+    close: closeTexChange,
+  } = useTexChange({
+    model: chatModel,
+    projectPath: activeProject?.project_path || '',
+    applyProposal: applyTexProposal,
+  });
 
   const {
     speech,
@@ -431,6 +457,33 @@ const PdfPreview = forwardRef(({ chatModel = '', base64Pdf, sourceUrl, directUrl
     }));
   };
 
+  // The selection's first and last points in PDF points, as Ctrl+double-click
+  // sends them to SyncTeX: where the excerpt starts and where it ends.
+  const readSelectionAnchors = () => {
+    const selection = window.getSelection?.();
+    const container = containerRef.current;
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0 || !container) return [];
+    const range = selection.getRangeAt(0);
+    if (!container.contains(range.commonAncestorContainer)) return [];
+    const rects = Array.from(range.getClientRects()).filter((rect) => rect.width > 0.5 && rect.height > 0.5);
+    if (rects.length === 0) return [];
+    const toAnchor = (clientX, clientY) => {
+      const hit = pageAtPoint(clientX, clientY);
+      if (!hit) return null;
+      return {
+        page: hit.page,
+        x: viewportPxToApp(clientX - hit.box.left) / scale,
+        y: viewportPxToApp(clientY - hit.box.top) / scale,
+      };
+    };
+    const first = rects[0];
+    const last = rects[rects.length - 1];
+    return [
+      toAnchor(first.left + Math.min(1, first.width / 2), first.top + first.height / 2),
+      toAnchor(last.right - Math.min(1, last.width / 2), last.top + last.height / 2),
+    ].filter(Boolean);
+  };
+
   const annotationAtPoint = (clientX, clientY) => {
     const hit = pageAtPoint(clientX, clientY);
     if (!hit) return null;
@@ -553,6 +606,14 @@ const PdfPreview = forwardRef(({ chatModel = '', base64Pdf, sourceUrl, directUrl
       );
       if (!confirmed) return;
     }
+    await rebuildFromSource({ pdfPath: selectedFile, texFile: sourceTexFile });
+  };
+
+  // Rebuilds `pdfPath` from its .tex as saved on disk: the Recompile button of
+  // a standalone PDF, and the rebuild after a "Change .tex" is applied (in the
+  // compiled preview too, since the editor had nothing unsaved to compile).
+  const rebuildFromSource = async ({ pdfPath, texFile }) => {
+    if (!activeProject?.project_path || !pdfPath) return;
     setIsRecompiling(true);
     try {
       const res = await fetch('/api/latex/compile-pdf-source', {
@@ -560,22 +621,24 @@ const PdfPreview = forwardRef(({ chatModel = '', base64Pdf, sourceUrl, directUrl
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectPath: activeProject.project_path,
-          pdfPath: selectedFile,
+          pdfPath,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        onLatexCompileSuccess?.({ filePath: sourceTexFile, compiledMainFile: data.compiled_main_file || sourceTexFile });
-        reloadRenderedPdf();
+        onLatexCompileSuccess?.({ filePath: texFile, compiledMainFile: data.compiled_main_file || texFile });
+        if (isStandalonePdf) reloadRenderedPdf();
+        else onPdfRebuilt?.();
       } else {
         reportRecompileFailure({
+          texFile,
           log: data.log || 'LaTeX compilation failed.',
           compiledMainFile: data.compiled_main_file || '',
           fileContent: data.source_content || '',
         });
       }
     } catch (err) {
-      reportRecompileFailure({ log: 'Failed to connect to backend: ' + err.message, compiledMainFile: '', fileContent: '' });
+      reportRecompileFailure({ texFile, log: 'Failed to connect to backend: ' + err.message, compiledMainFile: '', fileContent: '' });
     } finally {
       setIsRecompiling(false);
     }
@@ -583,10 +646,10 @@ const PdfPreview = forwardRef(({ chatModel = '', base64Pdf, sourceUrl, directUrl
 
   // Same problem record the editor's compile reports, so the failure also lands
   // in the Problems panel and "Fix with AI" works on the .tex that is not open.
-  const reportRecompileFailure = async ({ log, compiledMainFile, fileContent }) => {
+  const reportRecompileFailure = async ({ texFile, log, compiledMainFile, fileContent }) => {
     const problem = {
       source: 'latex_compile',
-      filePath: sourceTexFile,
+      filePath: texFile,
       fileContent,
       projectPath: activeProject?.project_path || '',
       projectName: activeProject?.name || '',
@@ -868,8 +931,71 @@ const PdfPreview = forwardRef(({ chatModel = '', base64Pdf, sourceUrl, directUrl
       // never created. `selectedText` was always captured this way; the geometry
       // has to be too.
       selectionRects: canAnnotate ? readSelectionRectsByPage() : [],
+      selectionAnchors: changeTexTarget ? readSelectionAnchors() : [],
       annotation: canAnnotate ? annotationAtPoint(event.clientX, event.clientY) : null,
     });
+  };
+
+  // ── Change .tex ──────────────────────────────────────────────────────────
+  // Offered only for an Associated PDF: the PDF opened on its own when it has a
+  // .tex of its own, or the compiled preview the editor says is one.
+  const changeTexTarget = isStandalonePdf
+    ? (sourceTexFile ? { pdfPath: String(selectedFile || '').replace(/\\/g, '/'), sourceTex: sourceTexFile } : null)
+    : (associatedPdf?.pdfPath && associatedPdf?.sourceTex ? associatedPdf : null);
+
+  const handleChangeTex = (menu) => {
+    if (!changeTexTarget) return;
+    if (!menu.selectionAnchors?.length) {
+      showAlert(t('pdfPreview.annotationSelectionLost', 'Could not read the selected area. Select the text again and retry.'));
+      return;
+    }
+    closeLookup();
+    openTexChange(menu.selectedText, { x: menu.x, y: menu.y }, {
+      pdfPath: changeTexTarget.pdfPath,
+      page: menu.page,
+      anchors: menu.selectionAnchors,
+    });
+  };
+
+  applyTexProposalRef.current = async ({ file, edits }) => {
+    const target = changeTexTarget;
+    if (!target || !activeProject?.project_path) {
+      return { ok: false, error: t('texChange.noTarget', 'This PDF is no longer shown.') };
+    }
+    if (isFileUnsaved?.(file)) {
+      return {
+        ok: false,
+        error: t('texChange.unsaved', '{{file}} has unsaved changes in the editor. Save it, then apply again.', { file }),
+      };
+    }
+    // The rebuild that follows replaces this PDF, and the annotations stored in it.
+    if (isStandalonePdf && annotations.length > 0) {
+      const confirmed = await showConfirm(
+        t('pdfPreview.recompileDropsAnnotations', 'Recompiling replaces this PDF with a new build of {{file}}. The {{count}} annotation(s) stored in it will be lost.', { file: target.sourceTex, count: annotations.length }),
+        t('texChange.title', 'Change .tex'),
+        { destructive: true },
+      );
+      if (!confirmed) return { ok: false, error: t('texChange.notApplied', 'The change was not applied.') };
+    }
+    const res = await fetch('/api/tex-change/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectPath: activeProject.project_path, file, edits }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: data.code === 'stale'
+          ? t('texChange.stale', '{{file}} changed since this proposal was made ({{reason}}). Ask for a new proposal.', { file, reason: data.error })
+          : (data.error || res.statusText),
+      };
+    }
+    onTexFileWritten?.(file, data.content);
+    // Not awaited: the card reports the apply, and the rebuild reports itself
+    // (the PDF reloads, or the compile error is shown).
+    rebuildFromSource({ pdfPath: target.pdfPath, texFile: target.sourceTex });
+    return { ok: true };
   };
 
   const handleAskAboutPdf = (menu) => {
@@ -2052,6 +2178,7 @@ const PdfPreview = forwardRef(({ chatModel = '', base64Pdf, sourceUrl, directUrl
         onAnnotate={handleAnnotateSelection}
         onEditNote={handleOpenNote}
         onRemoveAnnotation={handleRemoveAnnotation}
+        onChangeTex={changeTexTarget ? handleChangeTex : undefined}
       />
 
       {/* Hover reading. The note editor takes over on click, so this stays a
@@ -2117,6 +2244,14 @@ const PdfPreview = forwardRef(({ chatModel = '', base64Pdf, sourceUrl, directUrl
           reason: lookupNoteReason,
           onSave: handleSaveLookupNote,
         }}
+      />
+
+      <TexChangePopup
+        state={texChange}
+        onClose={closeTexChange}
+        onDraftChange={setTexChangeDraft}
+        onSubmit={submitTexChange}
+        onApply={applyTexChange}
       />
 
       {isPresenting && pdfUrl && (

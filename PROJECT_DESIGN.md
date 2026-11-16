@@ -104,6 +104,11 @@ them, so the front-end ports unchanged. Projects moved from
   buffered whole. Filenames arrive as raw UTF-8, as Chromium sends them.
 - **Static interface**: `gilzacode/static/`, with a single-page-application
   fallback. Unknown `/api/*` paths are JSON 404s, never the HTML shell.
+  `index.html` and every other file without a content hash in its name are
+  served with `Cache-Control: no-cache`, and the hashed files under `assets/`
+  with `immutable`. Served with neither, WebView2 cached `index.html`
+  heuristically and the window kept starting the previous build after an update
+  (seen on 2026-11-16: its cache held only older bundles).
 
 ## 4. Global data (`~/.gilzacode`, or `GILZACODE_HOME`)
 
@@ -312,6 +317,19 @@ reports a dangling name when the line runs; the cut was driven by it.
   switching tabs. A result opens the file with the match selected (`jumpToLine`
   carries a column and length); a Markdown file shown as a full preview is not
   switched back to the editor for it.
+- **Reading view and Split view** (`EditorPanel.jsx`; terms in `GLOSSARY.md`).
+  A `.tex` with an Associated PDF (`name.pdf` beside `name.tex`;
+  `/api/latex/check-pdf` answers `associated`, `pdf_path` and `source_tex`)
+  opens in Reading view: the PDF alone across the document area, in whatever
+  layout is active (no layout switch, so Claude Code and the terminal stay on
+  screen). The toolbar's PDF button switches to Split view (the `.tex` beside
+  the PDF) and back. A `.tex` opened at a line (a search result, an error,
+  `open_file` with a line, `reveal_in_pdf`, inverse search from the PDF) shows
+  Split view, because a line is a request to see the source. The choice is kept
+  per file while its tab is open (`texPdfViews`); closing the tab forgets it.
+  An included file has no Associated PDF of its own and keeps the old split
+  with its main document's PDF. Reading view unmounts Monaco, so a jump waits
+  for the next mount (`editorMountSeq`, `pendingEditorLineRef`).
 - **Preferences** keep GilzaBots' one-time localStorage import, which never
   overwrites a stored key.
 - **Fixed from GilzaBots**: a ` ```tikzgraphic ` block in rendered Markdown
@@ -429,8 +447,8 @@ was missing.
   command line is limited.
 - **Isolated calls:** each call uses `--strict-mcp-config`,
   `--no-session-persistence` and `--setting-sources ""`.
-- **Tools:** Translate gets none. Look up gets `Read,Grep,Glob` with the
-  project as its working directory.
+- **Tools:** Translate gets none. Look up and Change .tex get `Read,Grep,Glob`
+  with the project as their working directory.
 - **Files read:** `--output-format stream-json` reports the Read calls, which
   become `files_read`.
 - **Models:** `haiku` for Translate and `sonnet` for Look up by default, in
@@ -439,6 +457,48 @@ was missing.
   that read a file.
 - **Errors:** a missing CLI answers 503, a timeout 504, and a model-reported
   error 502, each with its message.
+
+### Change .tex (`tex_change.py`, `routes_tex_change.py`, `hooks/useTexChange.js`, `components/TexChangePopup.jsx`)
+
+An action of the PDF viewer's menu, offered only for an Associated PDF (a PDF
+opened on its own with a `.tex` of its own, or the compiled preview of a `.tex`)
+and disabled without a selection. The user describes a change in words in a
+card that works like Look up's: not modal, closed only by its button or Escape,
+never in the Claude Code panel.
+
+- **Where the excerpt comes from.** At right-click, the viewer reads the
+  selection's first and last points in PDF points (as Ctrl+double-click sends
+  them). The server maps them through the PDF's companion SyncTeX file to one
+  source file and a line range. That file can be an included one
+  (`chapter.tex`), and it is the only file a proposal may change. No SyncTeX
+  file, no line, a source outside the project, or an excerpt spanning two
+  files is a 409 with the reason (recompile, or select within one file). The
+  `.tex` is never searched for the text instead.
+- **The call:** `claude -p` with `Read,Grep,Glob` in the project and
+  `--json-schema`. The answer is the result event's `structured_output`
+  (CLI 2.1.325): `{kind: proposal | question | message, text, edits:
+  [{before, after}]}`. A question asks the user something; a message says the
+  change belongs elsewhere (another file, a macro). Every call starts fresh, so
+  the card sends the whole conversation each time, Claude's earlier proposals
+  included and marked applied or not.
+- **A proposal is checked before it is shown:** each `before` must occur
+  exactly once in the file, without overlaps, after its line breaks are
+  written as the file writes them (CRLF stays CRLF). Otherwise 502
+  `invalid_answer`.
+- **Nothing is written before Apply.** `/api/tex-change/apply` (exclusive work,
+  ordered with saves and compiles) checks the same conditions again on the
+  file as it is now: a changed file is a 409 `stale`, and the card asks for a
+  new proposal. The interface refuses first when the file's tab has unsaved
+  edits. A standalone PDF holding annotations asks before the rebuild that
+  would drop them.
+- **After Apply:** the open tab's buffers take the new content
+  (`handleTexFileWritten`), the PDF is rebuilt from disk
+  (`/api/latex/compile-pdf-source`) and reloaded, and the card stays open for
+  further requests.
+- **Model:** the `tex_change_model` setting, else `lookup_model`, else `sonnet`.
+- **Verified** with the real CLI (haiku) on a CRLF file and a hand-written
+  SyncTeX file: located line 4, a structured proposal, applied with its line
+  endings intact. Not yet driven through the window.
 
 ### GilzaCode skills (`claude_plugins.py`, `components/modals/ClaudeSkillsSection.jsx`)
 

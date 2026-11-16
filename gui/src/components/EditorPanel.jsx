@@ -86,6 +86,10 @@ export default function EditorPanel({
   onFixLatexProblem,
   onAskAboutPdf,
   onAskAboutMarkdown,
+  // "Change .tex": whether an open file has unsaved edits, and the buffers'
+  // update after an apply wrote a file (see PdfPreview).
+  isFileUnsaved,
+  onTexFileWritten,
   speechSettingsSignal = 0,
   onTextStatsChange,
   // Set by a layout that is built around a visible preview (the studio). It
@@ -117,6 +121,24 @@ export default function EditorPanel({
   const [wysiwygFiles, setWysiwygFiles] = useState(() => new Set());
   const isWysiwygMode = !!selectedFile && wysiwygFiles.has(selectedFile);
   const [isPdfPreviewCollapsed, setIsPdfPreviewCollapsed] = useState(true);
+  // Reading view or Split view (GLOSSARY.md), per .tex that has an Associated
+  // PDF: { [file]: 'reading' | 'split' }. A file gets its entry when it is first
+  // shown — Reading view, or Split view when it was opened at a line — and keeps
+  // the user's choice while its tab stays open.
+  const [texPdfViews, setTexPdfViews] = useState({});
+  const setTexPdfView = useCallback((file, view) => {
+    setTexPdfViews((prev) => (prev[file] === view ? prev : { ...prev, [file]: view }));
+  }, []);
+  // The PDF the compiled preview shows and the .tex it is the Associated PDF
+  // of ({ pdfPath, sourceTex }), from check-pdf; "Change .tex" needs it.
+  const [associatedPdf, setAssociatedPdf] = useState(null);
+  // Bumped on every Monaco mount: a jump that waited for the editor (Reading
+  // view has none) is carried out once it exists.
+  const [editorMountSeq, setEditorMountSeq] = useState(0);
+  const jumpToLineRef = useRef(jumpToLine);
+  jumpToLineRef.current = jumpToLine;
+  const pdfRevealRequestRef = useRef(pdfRevealRequest);
+  pdfRevealRequestRef.current = pdfRevealRequest;
   const [showSnippetsPanel, setShowSnippetsPanel] = useState(false);
   const [showLatexHelp, setShowLatexHelp] = useState(false);
   const [showDocumentActionsMenu, setShowDocumentActionsMenu] = useState(false);
@@ -283,6 +305,8 @@ export default function EditorPanel({
   const [isInstallingPandoc, setIsInstallingPandoc] = useState(false);
   const [isExportingDocx, setIsExportingDocx] = useState(false);
   const [isCleaningLatex, setIsCleaningLatex] = useState(false);
+  const texPdfView = isTexFile ? texPdfViews[selectedFile] : undefined;
+  const isReadingView = texPdfView === 'reading' && !isPdfPreviewCollapsed && Boolean(pdfUrl);
   const pendingPdfSyncRef = useRef(null);
   // reveal_in_pdf's scroll, held while the viewer (re)loads the document.
   const pendingPdfRevealRef = useRef(null);
@@ -347,6 +371,14 @@ export default function EditorPanel({
     syncPdfToEditorLine(pending);
   }, [syncPdfToEditorLine]);
 
+  // The compiled preview was rebuilt from disk after a "Change .tex" apply
+  // (/api/latex/compile-pdf-source, which also points /api/latex/pdf at it).
+  const handlePdfRebuilt = useCallback(() => {
+    setPdfUrl(`/api/latex/pdf?ts=${Date.now()}`);
+    setPdfErrorLog('');
+    setLatexCompileProblem(null);
+  }, []);
+
   const handleInstallTectonic = async () => {
     setIsInstallingTectonic(true);
     try {
@@ -395,6 +427,8 @@ export default function EditorPanel({
     if (activeProject?.project_path !== prevProjectRef.current) {
       setPdfUrl(null);
       setPdfErrorLog('');
+      setAssociatedPdf(null);
+      setTexPdfViews({});
       prevProjectRef.current = activeProject?.project_path;
     }
   }, [activeProject?.project_path]);
@@ -411,7 +445,11 @@ export default function EditorPanel({
     // Check if there is an existing PDF for this file
     let cancelled = false;
     if (selectedFile && selectedFile.toLowerCase().endsWith('.tex') && activeProject?.project_path) {
-      fetch(`/api/latex/check-pdf?filePath=${encodeURIComponent(selectedFile)}&projectPath=${encodeURIComponent(activeProject.project_path)}`)
+      const file = selectedFile;
+      // Read now, before the editor consumes the jump: a .tex opened at a line
+      // (a search result, an error, reveal_in_pdf) is opened to see the source.
+      const openedAtLine = jumpToLineRef.current?.file === file || pdfRevealRequestRef.current?.file === file;
+      fetch(`/api/latex/check-pdf?filePath=${encodeURIComponent(file)}&projectPath=${encodeURIComponent(activeProject.project_path)}`)
         .then(r => r.json())
         .then(data => {
           // A late answer for a file the user has already left must not
@@ -420,10 +458,17 @@ export default function EditorPanel({
           if (data.found && (data.pdf_url || data.pdf_base64)) {
             setPdfUrl(data.pdf_url || `/api/latex/pdf?ts=${Date.now()}`);
             setPdfErrorLog('');
+            setAssociatedPdf(data.source_tex ? { pdfPath: data.pdf_path, sourceTex: data.source_tex } : null);
             // Opening a .tex that already has a compiled PDF shows it beside
             // the source. The pane still starts collapsed for a file with no
             // PDF yet, where it would only hold an empty viewer.
             setIsPdfPreviewCollapsed(false);
+            // A .tex with an Associated PDF opens in Reading view (the PDF
+            // alone), unless it was opened at a line. An included file shows
+            // its main document's PDF, which is not its own: Split view as before.
+            if (data.associated) {
+              setTexPdfViews((prev) => (prev[file] ? prev : { ...prev, [file]: openedAtLine ? 'split' : 'reading' }));
+            }
           }
           // If not found, do NOT clear pdfUrl, so the main document's PDF remains visible
           // when clicking into an included file (e.g., apendice.tex).
@@ -513,6 +558,8 @@ export default function EditorPanel({
         };
         if (check.found) setPdfUrl(check.pdf_url || `/api/latex/pdf?ts=${Date.now()}`);
         setIsPdfPreviewCollapsed(false);
+        // A line to reveal is a request to see the source: Split view.
+        if (check.associated) setTexPdfView(file, 'split');
         // A new URL reloads the viewer and an opened pane mounts one; either
         // reports through handlePdfDocumentReady once the pages exist.
         if (check.found || !paneWasOpen || !pdfPreviewRef.current) pendingPdfRevealRef.current = reveal;
@@ -523,11 +570,29 @@ export default function EditorPanel({
     })();
   }, [pdfRevealRequest, selectedFile, activeProject?.project_path]);
 
+  // A jump to a line of the file shown in Reading view switches to Split view;
+  // the jump below runs once Monaco has mounted there (editorMountSeq).
+  useEffect(() => {
+    if (jumpToLine && jumpToLine.file === selectedFile && isReadingView) setTexPdfView(selectedFile, 'split');
+  }, [jumpToLine, selectedFile, isReadingView]);
+
+  // Forget the view of a closed tab: reopening it from the explorer shows
+  // Reading view again.
+  useEffect(() => {
+    setTexPdfViews((prev) => {
+      const kept = Object.fromEntries(Object.entries(prev).filter(([file]) => openFiles.includes(file)));
+      return Object.keys(kept).length === Object.keys(prev).length ? prev : kept;
+    });
+  }, [openFiles]);
+
   // Jump to line effect when switching files
   useEffect(() => {
-    if (jumpToLine && jumpToLine.file === selectedFile && localEditorRef.current) {
+    if (jumpToLine && jumpToLine.file === selectedFile && localEditorRef.current && !isReadingView) {
       // Small delay to ensure editor is mounted and file is loaded
       setTimeout(() => {
+        // An editor disposed by leaving Split view has no model: wait for the
+        // new one, whose mount runs this effect again (editorMountSeq).
+        if (!localEditorRef.current?.getModel?.()) return;
         if (localEditorRef.current) {
           const editor = localEditorRef.current;
           if (jumpToLine.column) {
@@ -549,7 +614,7 @@ export default function EditorPanel({
         setJumpToLine(null);
       }, 100);
     }
-  }, [selectedFile, jumpToLine, setJumpToLine]);
+  }, [selectedFile, jumpToLine, setJumpToLine, isReadingView, editorMountSeq]);
 
   const handleCompile = async (skipSave = false, partial = false, draft = false) => {
     setIsCompiling(true);
@@ -1072,6 +1137,14 @@ export default function EditorPanel({
     const normalizedFile = normalizeSlash(file);
     const normalizedSelected = normalizeSlash(selectedFile);
 
+    // In Reading view there is no editor to move: show the source beside the
+    // PDF, and Monaco's mount reveals the line (pendingEditorLineRef).
+    if (isReadingView && (!file || !file.trim() || normalizedFile === normalizedSelected)) {
+      pendingEditorLineRef.current = line;
+      setTexPdfView(selectedFile, 'split');
+      return;
+    }
+
     // Guard against empty/invalid file paths from SyncTeX — these would
     // open a blank untitled tab in the editor.
     if (!file || !file.trim()) {
@@ -1200,6 +1273,7 @@ export default function EditorPanel({
 
     localEditorRef.current = actualEditor;
     monacoRef.current = monaco;
+    setEditorMountSeq((seq) => seq + 1);
 
     if (!isDiff) {
       syncEditorValue(actualEditor, fileContent);
@@ -1555,6 +1629,38 @@ export default function EditorPanel({
     )
   );
 
+  // The compiled PDF of an open .tex: the right pane of Split view, or the
+  // whole document area in Reading view. One element, so the two never drift.
+  const renderTexPdfPreview = () => (
+    <PdfPreview
+      key={pdfViewKey}
+      chatModel={chatModel}
+      ref={pdfPreviewRef}
+      initialViewState={pdfViewStatesRef.current[pdfViewKey]}
+      onViewStateChange={rememberPdfViewState}
+      base64Pdf={null}
+      sourceUrl={pdfUrl}
+      isCompiling={isCompiling}
+      errorLog={pdfErrorLog}
+      activeProject={activeProject}
+      selectedFile={selectedFile}
+      onSyncTexNavigate={handleSyncTexNavigate}
+      onDocumentReady={handlePdfDocumentReady}
+      onCollapse={() => setIsPdfPreviewCollapsed(true)}
+      latexCompileProblem={latexCompileProblem}
+      onFixLatexProblem={onFixLatexProblem}
+      onLatexCompileError={onLatexCompileError}
+      onLatexCompileSuccess={onLatexCompileSuccess}
+      onAskAboutPdf={onAskAboutPdf}
+      associatedPdf={associatedPdf}
+      isFileUnsaved={isFileUnsaved}
+      onTexFileWritten={onTexFileWritten}
+      onPdfRebuilt={handlePdfRebuilt}
+      speechSettingsSignal={speechSettingsSignal}
+      uiScale={uiScale}
+    />
+  );
+
   const renderTexEditorSurface = () => (
     <div className="vscode-editor-container" style={{ position: 'relative', height: '100%' }}>
       {isWysiwygMode ? (
@@ -1696,7 +1802,30 @@ export default function EditorPanel({
         </div>
 
         <div className="vscode-editor-actions">
-          {isTexFile && (
+          {isTexFile && texPdfView && (
+            // A .tex with an Associated PDF: the button switches between
+            // Reading view and Split view (GLOSSARY.md). From the editor alone
+            // (the pane's own collapse button) it brings the PDF back beside it.
+            <button
+              onClick={() => {
+                if (isPdfPreviewCollapsed) {
+                  setIsPdfPreviewCollapsed(false);
+                  setTexPdfView(selectedFile, 'split');
+                } else {
+                  setTexPdfView(selectedFile, isReadingView ? 'split' : 'reading');
+                }
+              }}
+              className="vscode-editor-action-btn vscode-editor-action-btn-primary"
+              style={{ width: 'auto', minWidth: '36px', padding: '0 4px', gap: '2px' }}
+              title={isReadingView ? t('editorPanel.showTexBesidePdf', 'Show the .tex beside the PDF') : t('editorPanel.showPdfAlone', 'Show the PDF alone')}
+              aria-label={isReadingView ? t('editorPanel.showTexBesidePdf', 'Show the .tex beside the PDF') : t('editorPanel.showPdfAlone', 'Show the PDF alone')}
+              aria-pressed={isReadingView}
+            >
+              {isReadingView ? <Columns2 size={14} /> : <FileText size={14} />}
+              <span style={{ fontSize: '11px', fontWeight: 700, lineHeight: 1 }}>{isReadingView ? 'TEX' : 'PDF'}</span>
+            </button>
+          )}
+          {isTexFile && !texPdfView && (
             <button
               onClick={() => setIsPdfPreviewCollapsed(prev => !prev)}
               className={`vscode-editor-action-btn${!isPdfPreviewCollapsed ? ' vscode-editor-action-btn-primary' : ''}`}
@@ -2090,9 +2219,16 @@ export default function EditorPanel({
               onLatexCompileError={onLatexCompileError}
               onLatexCompileSuccess={onLatexCompileSuccess}
               onAskAboutPdf={onAskAboutPdf}
+              isFileUnsaved={isFileUnsaved}
+              onTexFileWritten={onTexFileWritten}
               speechSettingsSignal={speechSettingsSignal}
               uiScale={uiScale}
             />
+          </div>
+        ) : isTexFile && isReadingView ? (
+          // Reading view: the Associated PDF alone, across the document area.
+          <div style={{ height: '100%', background: 'var(--vscode-editor-bg)' }}>
+            {renderTexPdfPreview()}
           </div>
         ) : isTexFile && isPdfPreviewCollapsed ? (
           renderTexEditorSurface()
@@ -2111,27 +2247,7 @@ export default function EditorPanel({
         >
           {renderTexEditorSurface()}
           <div style={{ height: '100%', background: 'var(--vscode-editor-bg)', borderLeft: '1px solid var(--vscode-border)' }}>
-            <PdfPreview
-              key={pdfViewKey}
-              chatModel={chatModel}
-              ref={pdfPreviewRef}
-              initialViewState={pdfViewStatesRef.current[pdfViewKey]}
-              onViewStateChange={rememberPdfViewState}
-              base64Pdf={null}
-              sourceUrl={pdfUrl}
-              isCompiling={isCompiling} 
-              errorLog={pdfErrorLog} 
-              activeProject={activeProject}
-              selectedFile={selectedFile}
-              onSyncTexNavigate={handleSyncTexNavigate}
-              onDocumentReady={handlePdfDocumentReady}
-              onCollapse={() => setIsPdfPreviewCollapsed(true)}
-              latexCompileProblem={latexCompileProblem}
-              onFixLatexProblem={onFixLatexProblem}
-              onAskAboutPdf={onAskAboutPdf}
-              speechSettingsSignal={speechSettingsSignal}
-              uiScale={uiScale}
-            />
+            {renderTexPdfPreview()}
           </div>
           </Split>
         ) : isSplitPreviewActive ? (

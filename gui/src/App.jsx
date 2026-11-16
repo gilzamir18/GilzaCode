@@ -476,6 +476,27 @@ export default function App() {
     }
   }
 
+  // "Change .tex" refuses to write a file whose open tab has unsaved edits.
+  const isOpenFileUnsaved = (filePath) => openFiles.some(
+    (openFile) => sameFilePath(openFile, filePath) && unsavedFiles.has(markerPathKey(openFile)),
+  );
+
+  // A "Change .tex" apply wrote `filePath` with `content`. The tab, if open,
+  // had nothing unsaved (the apply checked), so its buffers take the new text
+  // as refreshSelectedFileFromDiskIfUnmodified does for an outside write.
+  function handleTexFileWritten(filePath, content) {
+    const openFile = openFiles.find((path) => sameFilePath(path, filePath));
+    diskFileContentsRef.current[openFile || filePath] = content;
+    if (!openFile) return;
+    setFileContents(prev => ({ ...prev, [openFile]: content }));
+    setOriginalFileContents(prev => ({ ...prev, [openFile]: content }));
+    if (sameFilePath(selectedFile, openFile)) {
+      fileContentRef.current = content;
+      setFileContent(content);
+    }
+    addLog('info', t('app.reloadedFromDisk', { path: openFile }));
+  }
+
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const { startResizing } = useResizing({
     setSidebarWidth,
@@ -2476,6 +2497,8 @@ export default function App() {
               onFixLatexProblem={handleFixLatexProblem}
               onAskAboutPdf={handleAskAboutPdf}
               onAskAboutMarkdown={handleAskAboutMarkdown}
+              isFileUnsaved={isOpenFileUnsaved}
+              onTexFileWritten={handleTexFileWritten}
               speechSettingsSignal={speechSettingsSignal}
               onTextStatsChange={setEditorTextStats}
               openPreviewByDefault={isStudioLayout || isDocumentLayout}

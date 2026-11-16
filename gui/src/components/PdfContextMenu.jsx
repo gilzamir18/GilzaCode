@@ -1,5 +1,5 @@
 import React from 'react';
-import { Highlighter, Underline, Strikethrough, StickyNote, Trash2, PenLine } from 'lucide-react';
+import { Highlighter, Underline, Strikethrough, StickyNote, Trash2, PenLine, FilePen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ContextMenuSurface from './ContextMenuSurface';
 import SnippetActions from './SnippetActions';
@@ -12,6 +12,9 @@ import SnippetActions from './SnippetActions';
  * only apply to a selected excerpt, so they stay disabled while the selection is
  * empty. When the click landed on an existing annotation, `menu.annotation` holds
  * it and the menu leads with the actions for that mark.
+ *
+ * "Change .tex" is offered only for an Associated PDF, so it is absent when
+ * `onChangeTex` is not passed, and disabled while nothing is selected.
  *
  * What is left here is what is genuinely PDF-specific: the annotations. The
  * excerpt actions below the separator are shared with every other document
@@ -38,6 +41,7 @@ export default function PdfContextMenu({
   onAnnotate,
   onEditNote,
   onRemoveAnnotation,
+  onChangeTex,
 }) {
   const { t } = useTranslation();
 
@@ -139,6 +143,22 @@ export default function PdfContextMenu({
         onTranslate={() => run(onTranslate)}
         onPronounce={onPronounce ? (() => run(onPronounce)) : undefined}
       />
+
+      {onChangeTex && (
+        <>
+          <div className="vscode-context-menu-separator" role="separator" />
+          <div
+            className={`vscode-context-menu-item${hasSelection ? '' : ' vscode-context-menu-item-disabled'}`}
+            role="menuitem"
+            aria-disabled={!hasSelection}
+            title={hasSelection ? undefined : t('pdfContextMenu.changeTexNeedsSelection', 'Select the excerpt to change in the PDF first.')}
+            onClick={() => { if (hasSelection) run(onChangeTex); }}
+          >
+            <FilePen size={13} style={{ color: 'var(--vscode-fg-link)' }} />
+            <span>{t('pdfContextMenu.changeTex', 'Change .tex…')}</span>
+          </div>
+        </>
+      )}
     </ContextMenuSurface>
   );
 }

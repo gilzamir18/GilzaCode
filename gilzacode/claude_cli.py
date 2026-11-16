@@ -187,15 +187,19 @@ def child_environment(base: dict | None = None) -> dict:
 class HeadlessResult:
     text: str
     files_read: list[str] = field(default_factory=list)
+    #: The answer as an object, when the call passed a JSON schema.
+    structured: dict | None = None
 
 
-def headless_argv(executable: str, *, system_prompt: str, model: str, tools: tuple[str, ...]) -> list[str]:
+def headless_argv(executable: str, *, system_prompt: str, model: str, tools: tuple[str, ...],
+                  json_schema: dict | None = None) -> list[str]:
     return [
         executable, "-p",
         "--model", model,
         "--system-prompt", system_prompt,
         "--tools", ",".join(tools),
         *(["--allowedTools", ",".join(tools)] if tools else []),
+        *(["--json-schema", json.dumps(json_schema)] if json_schema else []),
         "--strict-mcp-config",
         "--no-session-persistence",
         "--setting-sources", "",
@@ -229,13 +233,22 @@ def parse_stream(stdout: str) -> HeadlessResult:
     if result.get("is_error"):
         detail = str(result.get("result") or result.get("subtype") or "unknown error")
         raise ClaudeCliError(f"Claude Code reported an error: {detail}", kind="failed")
-    return HeadlessResult(text=str(result.get("result") or ""), files_read=files)
+    structured = result.get("structured_output")
+    return HeadlessResult(text=str(result.get("result") or ""), files_read=files,
+                          structured=structured if isinstance(structured, dict) else None)
 
 
 async def run_headless(prompt: str, *, system_prompt: str, model: str, tools: tuple[str, ...] = (),
-                       cwd: str | None = None, timeout: float = 180.0) -> HeadlessResult:
-    """Run one ``claude -p`` call and return its answer. Raises `ClaudeCliError`."""
-    argv = headless_argv(find_claude(), system_prompt=system_prompt, model=model, tools=tools)
+                       cwd: str | None = None, timeout: float = 180.0,
+                       json_schema: dict | None = None) -> HeadlessResult:
+    """Run one ``claude -p`` call and return its answer. Raises `ClaudeCliError`.
+
+    With ``json_schema``, Claude Code answers through its structured-output tool
+    and the object is in ``structured`` (the result event's ``structured_output``,
+    checked against CLI 2.1.325).
+    """
+    argv = headless_argv(find_claude(), system_prompt=system_prompt, model=model, tools=tools,
+                         json_schema=json_schema)
     process = await asyncio.create_subprocess_exec(
         *argv, cwd=cwd, env=child_environment(),
         stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,

@@ -101,6 +101,16 @@ async def session_check(_request: web.Request) -> web.Response:
     return web.json_response({"success": True})
 
 
+#: Vite names every file under ``assets/`` after a hash of its content, so a
+#: cached copy can never be stale. Everything else, ``index.html`` above all,
+#: keeps its name across builds and must be revalidated: served without a
+#: ``Cache-Control``, the window's WebView2 cached it heuristically (from
+#: ``Last-Modified``) and kept starting a previous build of the interface after
+#: an update, never asking the server.
+IMMUTABLE_ASSETS = "public, max-age=31536000, immutable"
+REVALIDATE = "no-cache"
+
+
 def _static_handler(static_dir: Path | None):
     async def serve(request: web.Request) -> web.StreamResponse:
         if static_dir is None:
@@ -114,7 +124,8 @@ def _static_handler(static_dir: Path | None):
             full = root / "index.html"  # single-page application fallback
             if not full.is_file():
                 return web.Response(status=404, text="Not Found")
-        return web.FileResponse(full)
+        hashed = full.parent == root / "assets"
+        return web.FileResponse(full, headers={"Cache-Control": IMMUTABLE_ASSETS if hashed else REVALIDATE})
 
     return serve
 
@@ -127,7 +138,7 @@ def default_static_dir() -> Path | None:
 def create_app(session: LocalSession, static_dir: Path | None = None) -> web.Application:
     from gilzacode.server import (routes_claude, routes_cloud, routes_files, routes_git, routes_ide, routes_latex,
                                   routes_pdf, routes_projects, routes_settings, routes_snippets, routes_speech,
-                                  routes_system, routes_terminal)
+                                  routes_system, routes_terminal, routes_tex_change)
 
     app = web.Application(
         middlewares=[headers_middleware, session_middleware, ordering_middleware],
@@ -138,7 +149,8 @@ def create_app(session: LocalSession, static_dir: Path | None = None) -> web.App
     app[STATIC_DIR_KEY] = static_dir
     app.router.add_get("/api/session", session_check)
     for module in (routes_claude, routes_cloud, routes_files, routes_git, routes_ide, routes_latex, routes_pdf,
-                   routes_projects, routes_settings, routes_snippets, routes_speech, routes_system, routes_terminal):
+                   routes_projects, routes_settings, routes_snippets, routes_speech, routes_system, routes_terminal,
+                   routes_tex_change):
         app.router.add_routes(module.routes)
         if hasattr(module, "setup"):
             module.setup(app)

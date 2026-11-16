@@ -3046,6 +3046,54 @@ input:focus, select:focus, textarea:focus {
   flex-wrap: wrap;
 }
 
+/* Change .tex: the conversation and each proposed edit as before/after. */
+.tex-change-popup {
+  width: 520px;
+}
+
+.tex-change-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--vscode-border);
+}
+
+.tex-change-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tex-change-before,
+.tex-change-after {
+  margin: 0;
+  padding: 4px 6px;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: calc(11.5px * var(--snippet-translate-text-scale, 1));
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+  border-left: 3px solid;
+}
+
+.tex-change-before {
+  border-color: var(--vscode-fg-danger);
+  background: color-mix(in srgb, var(--vscode-fg-danger) 10%, transparent);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--vscode-fg-danger) 60%, transparent);
+}
+
+.tex-change-after {
+  border-color: var(--vscode-fg-success);
+  background: color-mix(in srgb, var(--vscode-fg-success) 10%, transparent);
+}
+
+.tex-change-apply {
+  align-self: flex-start;
+}
+
 .snippet-query-footer-btn {
   display: flex;
   align-items: center;

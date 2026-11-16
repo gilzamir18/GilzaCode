@@ -399,7 +399,18 @@ async def check_pdf(request: web.Request) -> web.Response:
         return web.json_response({"found": False})
     state = _state(request)
     state.pdf_path, state.synctex_path = target_pdf, os.path.splitext(base)[0] + ".synctex.gz"
-    return web.json_response({"found": True, "pdf_url": f"/api/latex/pdf?ts={int(time.time() * 1000)}"})
+    # The PDF shown, and the .tex it is the Associated PDF of (name.pdf beside
+    # name.tex). `associated` says that .tex is the file asked about: an
+    # included chapter shows its main document's PDF, which is not its own.
+    from gilzacode.latex_compiler import find_pdf_source_tex
+    pdf_rel = _relpath(target_pdf, project_path)
+    source_tex = find_pdf_source_tex(project_path, pdf_rel)
+    file_rel = _relpath(full, project_path)
+    return web.json_response({
+        "found": True, "pdf_url": f"/api/latex/pdf?ts={int(time.time() * 1000)}",
+        "pdf_path": pdf_rel, "source_tex": source_tex,
+        "associated": bool(source_tex) and os.path.normcase(source_tex) == os.path.normcase(file_rel),
+    })
 
 
 def _source_result(result: dict | None, base_dir: str, project_path: str) -> tuple[dict | None, str]:
