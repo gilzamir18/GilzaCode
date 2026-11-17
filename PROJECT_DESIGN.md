@@ -423,6 +423,12 @@ was missing.
   terminals), within the same 8–28 px range. The size is its own preference
   (`claudePanelFontSize`), separate from the shell terminals'
   (`terminalFontSize`), and applies on top of the interface scale.
+- **Paste.** Ctrl+V (and Ctrl+Shift+V) in this panel and in the bottom
+  panel's terminals pastes the clipboard's text, as Windows Terminal does
+  (`utils/terminalKeys.js`). xterm.js would otherwise send it as the control
+  character ^V and cancel the key, so the browser's paste never happened and
+  no text reached the prompt. Alt+V still reaches Claude Code, which uses it
+  to paste an image on Windows.
 
 ### Staged prompts are pasted, never submitted
 

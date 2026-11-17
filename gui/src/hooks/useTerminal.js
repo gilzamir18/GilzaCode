@@ -3,6 +3,7 @@ import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { useTranslation } from 'react-i18next';
 import { terminalRenderFontSize } from '../utils/terminalScale.js';
+import { isTerminalPasteKey } from '../utils/terminalKeys.js';
 
 // Terminal font size, adjustable per panel on top of the global interface
 // scale (see utils/uiScale.js): the global scale sets a comfortable baseline
@@ -172,6 +173,8 @@ export function useTerminal({ activeProject, terminalRef, terminalInstanceRef, f
     // documented interception hook. The interface-wide scale is Ctrl+Shift+/-,
     // which is deliberately let through to the window handler.
     term.attachCustomKeyEventHandler((ev) => {
+      // Not cancelled: the browser's paste follows, and xterm forwards its text.
+      if (isTerminalPasteKey(ev)) return false;
       if (ev.type !== 'keydown') return true;
       const isCtrl = ev.ctrlKey || ev.metaKey;
       if (!isCtrl || ev.shiftKey || ev.altKey) return true;
