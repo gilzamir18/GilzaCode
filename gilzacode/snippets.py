@@ -13,7 +13,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any
 
-from gilzacode import settings
+from gilzacode import helper_models
 from gilzacode.claude_cli import run_headless
 from gilzacode.files import is_within, normalize_rel
 
@@ -23,8 +23,6 @@ MAX_TRANSLATION_CHARS = 20000
 MAX_QUERY_EXCERPT_CHARS = 20000
 MAX_QUERY_QUESTION_CHARS = 4000
 
-DEFAULT_TRANSLATE_MODEL = "haiku"
-DEFAULT_LOOKUP_MODEL = "sonnet"
 LOOKUP_TOOLS = ("Read", "Grep", "Glob")
 
 TRANSLATION_LANGUAGE_NAMES: dict[str, str] = {
@@ -101,7 +99,7 @@ async def translate(text: str, target_language: str, model: str = "") -> str:
     if len(snippet) > MAX_TRANSLATION_CHARS:
         raise ValueError(f"The selected snippet is too long to translate "
                          f"({len(snippet)} characters, limit {MAX_TRANSLATION_CHARS}).")
-    model = model or str(settings.load().get("translate_model") or DEFAULT_TRANSLATE_MODEL)
+    model = helper_models.model_for("translate_model", model)
     result = await run_headless(snippet, system_prompt=build_translation_system_prompt(target_language),
                                 model=model, tools=(), timeout=180)
     translated = strip_plain_text_wrapper(result.text)
@@ -201,7 +199,7 @@ async def look_up(excerpt: str, question: str, source: SnippetQuerySource,
     if len(question) > MAX_QUERY_QUESTION_CHARS:
         raise ValueError(f"The question is too long ({len(question)} characters, limit {MAX_QUERY_QUESTION_CHARS}).")
     can_read = bool(project_path) and os.path.isdir(project_path)
-    model = model or str(settings.load().get("lookup_model") or DEFAULT_LOOKUP_MODEL)
+    model = helper_models.model_for("lookup_model", model)
     result = await run_headless(
         build_snippet_query_prompt(excerpt, question, source),
         system_prompt=build_snippet_query_system_prompt(can_read),

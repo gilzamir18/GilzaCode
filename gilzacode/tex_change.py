@@ -19,10 +19,9 @@ import os
 from dataclasses import dataclass
 from typing import Any
 
-from gilzacode import settings
+from gilzacode import helper_models
 from gilzacode.claude_cli import run_headless
 from gilzacode.files import PathOutsideProject, is_within, normalize_rel, resolve
-from gilzacode.snippets import DEFAULT_LOOKUP_MODEL
 
 MAX_EXCERPT_CHARS = 20000
 MAX_MESSAGE_CHARS = 4000
@@ -93,11 +92,8 @@ class Anchor:
 
 
 def resolve_model(requested: str = "") -> str:
-    """The request's model, else ``tex_change_model``, else Look up's model."""
-    if requested:
-        return requested
-    cfg = settings.load()
-    return str(cfg.get("tex_change_model") or cfg.get("lookup_model") or DEFAULT_LOOKUP_MODEL)
+    """The request's model, else ``tex_change_model``, else Look up's model (``helper_models``)."""
+    return helper_models.model_for("tex_change_model", requested)
 
 
 # ── Where the excerpt comes from ──────────────────────────────────────────────

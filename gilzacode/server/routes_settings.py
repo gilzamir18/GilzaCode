@@ -1,12 +1,13 @@
 """Interface settings: language, appearance, workspace, client preferences,
-and the model provider Claude Code uses (``model_provider.py``)."""
+the model provider Claude Code uses (``model_provider.py``) and the model each
+helper task runs on (``helper_models.py``)."""
 
 from __future__ import annotations
 
 import aiohttp
 from aiohttp import web
 
-from gilzacode import model_provider, settings
+from gilzacode import helper_models, model_provider, settings
 from gilzacode.server.app import error, read_json
 from gilzacode.server.routes_terminal import discard_claude_session
 
@@ -83,6 +84,22 @@ async def set_client_prefs(request: web.Request) -> web.Response:
 
 
 # ── The model provider ────────────────────────────────────────────────────────
+
+@routes.get("/api/settings/helper-models")
+async def get_helper_models(_request: web.Request) -> web.Response:
+    return web.json_response(helper_models.describe())
+
+
+@routes.post("/api/settings/helper-models")
+async def set_helper_models(request: web.Request) -> web.Response:
+    """``{"models": {task: alias or ""}}``; a task left out keeps its setting."""
+    data = await read_json(request)
+    try:
+        models = helper_models.save(data.get("models"))
+    except ValueError as exc:
+        return error(400, str(exc))
+    return web.json_response({"success": True, "models": models})
+
 
 #: How long GilzaCode waits for the Ollama server when listing its models.
 OLLAMA_TIMEOUT_SECONDS = 5.0

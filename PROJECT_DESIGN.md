@@ -298,7 +298,7 @@ reports a dangling name when the line runs; the cut was driven by it.
   reference below the selection: a `figure` in LaTeX, adding
   `\usepackage{graphicx}` when nothing loads it, an image in Markdown or HTML.
   When the buffer changed while Claude Code worked, nothing is written. The
-  model is `inline_edit_model`, defaulting to the Look up model. Cancel stops
+  model is `inline_edit_model` (*Helper task models*). Cancel stops
   waiting and writes nothing.
 - **Projects** use `/api/projects/*`, with a project's settings (name,
   folder, main file, Git root, compile on save) saved through
@@ -476,8 +476,8 @@ was missing.
   with the project as their working directory.
 - **Files read:** `--output-format stream-json` reports the Read calls, which
   become `files_read`.
-- **Models:** `haiku` for Translate and `sonnet` for Look up by default, in
-  the `translate_model` / `lookup_model` settings.
+- **Models:** `haiku` for Translate and `sonnet` for Look up by default; see
+  *Helper task models* below.
 - **Measured:** about 2.5 s per translation and about 6.5 s for a Look up
   that read a file.
 - **Errors:** a missing CLI answers 503, a timeout 504, and a model-reported
@@ -520,7 +520,7 @@ never in the Claude Code panel.
   (`handleTexFileWritten`), the PDF is rebuilt from disk
   (`/api/latex/compile-pdf-source`) and reloaded, and the card stays open for
   further requests.
-- **Model:** the `tex_change_model` setting, else `lookup_model`, else `sonnet`.
+- **Model:** the `tex_change_model` setting, else Look up's (*Helper task models*).
 - **Verified** with the real CLI (haiku) on a CRLF file and a hand-written
   SyncTeX file: located line 4, a structured proposal, applied with its line
   endings intact. Not yet driven through the window.
@@ -561,6 +561,25 @@ plugin it lists (`gilzacode-skills`, with `source: "./"`). The skills are under
   throwaway `CLAUDE_CONFIG_DIR`: install, list and update.
   `test_live_install_from_github` repeats this with `GILZACODE_LIVE_CLAUDE=1`.
 
+### Helper task models (`helper_models.py`, `components/modals/HelperModelsSection.jsx`)
+
+Helper tasks are the one-off `claude -p` calls the context menus start:
+Translate, Look up, Change .tex and the inline edits (Refine, Generate
+content, Create illustration, Ctrl+L). Settings > General > *Helper task
+models* chooses the model of each, among the aliases `claude --model` takes
+(`haiku`, `sonnet`, `opus`, `fable`), or the default.
+
+- **Settings:** `translate_model` (default `haiku`), `lookup_model` (default
+  `sonnet`), `tex_change_model` and `inline_edit_model` (both follow Look up's
+  model until they have their own). `helper_models.model_for` is the one place
+  that resolves them; `GET/POST /api/settings/helper-models` reads and stores
+  them, refusing an unknown task or a value that is not an alias (400); `""`
+  goes back to the default.
+- **Saved on choice.** A choice applies to the next call and restarts nothing,
+  unlike the model provider, so there is no Save button.
+- **With Ollama** each alias runs on a chosen Ollama model (below): `haiku` on
+  the fast model, the others on the main model. The section says which.
+
 ### Model provider (`model_provider.py`, `components/modals/ClaudeModelSection.jsx`)
 
 Settings > General chooses which model service Claude Code uses when GilzaCode
@@ -592,8 +611,8 @@ starts it: the Anthropic account (the default) or Ollama, either a local server
   Code's agents use aliases too, but Ollama knows only its own model names.
   `ANTHROPIC_MODEL`, `ANTHROPIC_DEFAULT_{OPUS,SONNET,FABLE}_MODEL` and
   `CLAUDE_CODE_SUBAGENT_MODEL` get the chosen model; `ANTHROPIC_DEFAULT_HAIKU_MODEL`
-  gets the "fast" model, or the same one. A full model id written into
-  `translate_model` / `lookup_model` is still passed as it is.
+  gets the "fast" model, or the same one. A full model id written by hand
+  into a helper task's setting is still passed as it is.
 - **Validated, never guessed.** Unknown fields, an unknown kind, a URL that is
   not http(s) with a host, or Ollama without a model are refused with the
   reason (400). An invalid provider found in `settings.json` stops `claude`

@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from gilzacode import claude_cli, snippets
+from gilzacode import claude_cli, helper_models, snippets
 from gilzacode.server import routes_claude
 from gilzacode.server.routes_terminal import CLAUDE_ID, SESSIONS_KEY
 
@@ -223,7 +223,7 @@ async def test_translate_sends_the_excerpt_on_stdin_with_no_tools(client, fake_c
     assert call["prompt"] == excerpt.strip()
     assert call["argv"][call["argv"].index("--tools") + 1] == ""
     assert "Brazilian Portuguese" in call["argv"][call["argv"].index("--system-prompt") + 1]
-    assert call["argv"][call["argv"].index("--model") + 1] == snippets.DEFAULT_TRANSLATE_MODEL
+    assert call["argv"][call["argv"].index("--model") + 1] == helper_models.TASKS["translate_model"]["default"]
 
 
 async def test_translate_refuses_what_it_cannot_do_whole(client, fake_claude):

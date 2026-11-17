@@ -12,6 +12,7 @@ import { useCustomDialog } from './CustomDialogProvider';
 import SpeechVoiceManager from './SpeechVoiceManager.jsx';
 import ClaudeSkillsSection from './ClaudeSkillsSection.jsx';
 import ClaudeModelSection from './ClaudeModelSection.jsx';
+import HelperModelsSection from './HelperModelsSection.jsx';
 import ClaudeCliSetup from '../ClaudeCliSetup.jsx';
 import i18n from '../../i18n/index.js';
 import { setPreference } from '../../utils/preferences';
@@ -453,6 +454,8 @@ export default function SettingsModal({
               <ClaudeSkillsSection />
 
               <ClaudeModelSection onSessionReplaced={onClaudeSessionReplaced} />
+
+              <HelperModelsSection />
             </>
           )}
 

@@ -23,10 +23,9 @@ import os
 import time
 from dataclasses import dataclass
 
-from gilzacode import settings
+from gilzacode import helper_models
 from gilzacode.claude_cli import run_headless
 from gilzacode.files import PathOutsideProject, normalize_rel, resolve
-from gilzacode.snippets import DEFAULT_LOOKUP_MODEL
 
 #: Replace the selection, insert at the cursor, or create an illustration.
 ACTIONS = ("replace", "insert", "illustrate")
@@ -133,11 +132,8 @@ class Request:
 
 
 def resolve_model(requested: str = "") -> str:
-    """The request's model, else ``inline_edit_model``, else the Look up model."""
-    if requested:
-        return requested
-    cfg = settings.load()
-    return str(cfg.get("inline_edit_model") or cfg.get("lookup_model") or DEFAULT_LOOKUP_MODEL)
+    """The request's model, else ``inline_edit_model``, else Look up's model (``helper_models``)."""
+    return helper_models.model_for("inline_edit_model", requested)
 
 
 def _fence(text: str) -> str:
