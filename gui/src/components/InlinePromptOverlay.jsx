@@ -296,7 +296,7 @@ export default function InlinePromptOverlay({ inlinePrompt, onSubmit, onClose, o
         {/* Hint */}
         <span style={{ fontSize: '11px', color: 'var(--vscode-descriptionForeground, #858585)', userSelect: 'none', display: 'flex', alignItems: 'center' }}>
           {isRunning
-            ? <><span className="opc-spinner" />{`GilzaBots is working${animatedDots}`}</>
+            ? <><span className="opc-spinner" />{`${t('editorPanel.inlineWorking', 'Claude Code is working')}${animatedDots}`}</>
             : `Enter ${t('editorPanel.inlinePromptSend').toLowerCase()} · Esc ${t('editorPanel.inlinePromptCancel').toLowerCase()}`
           }
         </span>

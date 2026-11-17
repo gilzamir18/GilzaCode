@@ -51,6 +51,7 @@ import DeleteProjectModal from './components/modals/DeleteProjectModal';
 import CloudSyncModal from './components/modals/CloudSyncModal';
 import CloudDownloadModal from './components/modals/CloudDownloadModal';
 import { useCustomDialog } from './components/modals/CustomDialogProvider';
+import { graphicxInsertionOffset, illustrationReference, inlineEditAction, lastSelectedLine } from './utils/inlineEdit';
 
 // How long the editor panel gets to carry out a reveal-in-PDF request, loading
 // the PDF included (used by the MCP tools in phase 4).
@@ -406,10 +407,11 @@ export default function App() {
   const [triggerCompileRequest, setTriggerCompileRequest] = useState(null);
 
   // ── Inline prompt (editor Ctrl+L / context-menu Refine, Generate, Illustrate) ──
-  // The editor still asks for an instruction in place; the instruction then goes
-  // to Claude Code, which edits the file itself (GilzaBots ran its own agent and
-  // replaced the selection).
+  // The editor asks for an instruction in place and writes Claude Code's answer
+  // into the file (handleInlineSubmit).
   const [inlinePrompt, setInlinePrompt] = useState(null);
+  const [isInlineRunning, setIsInlineRunning] = useState(false);
+  const inlineAbortRef = useRef(null);
 
   // ── Inline prompt (editor Ctrl+L / context-menu actions) ────────────────
 
@@ -2214,24 +2216,109 @@ export default function App() {
     setClaudePromptRequest({ seq: claudePromptSeqRef.current, text: prompt });
   };
 
-  const buildInlineClaudePrompt = (request, instruction) => {
-    const file = selectedFile || '';
-    const { startLine, endLine, selectedText, mode } = request;
-    const hasSelection = Boolean(selectedText && selectedText.trim());
-    const where = hasSelection
-      ? (startLine === endLine ? `line ${startLine}` : `lines ${startLine}-${endLine}`)
-      : `line ${startLine}, column ${request.cursorCol ?? request.startColumn ?? 1}`;
-    const fence = '````';
-    const excerpt = hasSelection ? `\n\nSelected text:\n${fence}\n${selectedText}\n${fence}` : '';
-    if (mode === 'createIllustration') {
-      return `In ${file} (${where}): create an SVG illustration for the selected text, save it in the project, and reference it from ${file}.\n\nInstruction: ${instruction}${excerpt}`;
-    }
-    return `In ${file} (${where}): ${instruction}${hasSelection ? '\nApply it to the selected text and edit the file directly.' : '\nInsert the result at that position and edit the file directly.'}${excerpt}`;
+  // Refine, Generate content, Create illustration and Ctrl+L write their result
+  // straight into the editor, as in GilzaBots (gilzacode/inline_edit.py): Claude
+  // Code answers headless and the answer replaces the selection or is inserted
+  // at the cursor, in the unsaved buffer, so Ctrl+Z takes it back. An
+  // illustration is saved under illustrations/ and referenced below the selection.
+  const reportInlineFailure = (message) => {
+    addLog('error', t('app.inlineEditFailed', { error: message }));
+    setAlertMessage(t('app.inlineEditErrorAlert', 'Claude Code could not generate the inline content: {{message}}', { message }));
   };
 
-  const handleInlineSubmit = (instruction) => {
-    if (!inlinePrompt || !activeProject || !String(instruction || '').trim()) return;
-    stageClaudePrompt(buildInlineClaudePrompt(inlinePrompt, instruction.trim()));
+  const handleInlineSubmit = async (instruction) => {
+    const request = inlinePrompt;
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    const model = editor?.getModel?.();
+    const text = String(instruction || '').trim();
+    if (!request || !activeProject || !selectedFile || !model || !monaco || !text) return;
+    const { startLine, endLine, mode } = request;
+    const hasSelection = Boolean(request.selectedText && request.selectedText.trim());
+    const action = inlineEditAction(mode, hasSelection);
+    const startColumn = request.startColumn ?? request.cursorCol ?? 1;
+    const range = action === 'insert'
+      ? new monaco.Range(startLine, startColumn, startLine, startColumn)
+      : new monaco.Range(startLine, startColumn, endLine, request.endColumn ?? startColumn);
+    const content = model.getValue();
+    const start = model.getOffsetAt(range.getStartPosition());
+    const end = model.getOffsetAt(range.getEndPosition());
+    const version = model.getVersionId();
+    const file = selectedFile;
+
+    const controller = new AbortController();
+    inlineAbortRef.current = controller;
+    setIsInlineRunning(true);
+    addLog('info', t('app.inlineEditStarting', { instruction: text }));
+    try {
+      const res = await fetch('/api/inline-edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          projectPath: activeProject.project_path,
+          file,
+          action,
+          instruction: text,
+          before: content.slice(0, start),
+          selection: content.slice(start, end),
+          after: content.slice(end),
+          line: startLine,
+          column: startColumn,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        reportInlineFailure(data.error || `HTTP ${res.status}`);
+        return;
+      }
+      // The answer belongs to the text it was asked about: if that changed
+      // (the file was edited, or another file is now in the editor), nothing
+      // is written.
+      if (editorRef.current !== editor || editor.getModel() !== model || model.getVersionId() !== version) {
+        reportInlineFailure(t('app.inlineEditStale', 'The file changed while Claude Code was working, so nothing was written. Try again.'));
+        if (data.svg_path) fetchFiles();
+        return;
+      }
+      const edits = [];
+      if (action === 'illustrate') {
+        const eol = model.getEOL();
+        const reference = illustrationReference(file, data, t('editorPanel.illustrationAlt', 'Illustration'));
+        const below = lastSelectedLine({ startLine, endLine, endColumn: request.endColumn });
+        const lineEnd = model.getLineMaxColumn(below);
+        edits.push({ range: new monaco.Range(below, lineEnd, below, lineEnd), text: `${eol}${eol}${reference}${eol}` });
+        const graphicxAt = file.toLowerCase().endsWith('.tex') ? graphicxInsertionOffset(content) : null;
+        if (graphicxAt !== null) {
+          const at = model.getPositionAt(graphicxAt);
+          edits.push({ range: new monaco.Range(at.lineNumber, 1, at.lineNumber, 1), text: `\\usepackage{graphicx}${eol}${eol}` });
+        }
+        fetchFiles();
+      } else {
+        edits.push({ range, text: data.text });
+      }
+      editor.pushUndoStop();
+      editor.executeEdits('inline-edit', edits.map(edit => ({ ...edit, forceMoveMarkers: true })));
+      editor.pushUndoStop();
+      addLog('info', action === 'illustrate'
+        ? t('app.svgCreatedInserted')
+        : action === 'insert' ? t('app.inlineGenerationApplied') : t('app.inlineEditApplied'));
+    } catch (err) {
+      if (err.name !== 'AbortError') reportInlineFailure(err.message);
+    } finally {
+      if (inlineAbortRef.current === controller) {
+        inlineAbortRef.current = null;
+        setIsInlineRunning(false);
+        setInlinePrompt(null);
+      }
+    }
+  };
+
+  // Cancelling stops waiting and writes nothing; the headless call that is
+  // already running ends on its own.
+  const handleInlineCancel = () => {
+    inlineAbortRef.current?.abort();
+    inlineAbortRef.current = null;
+    setIsInlineRunning(false);
     setInlinePrompt(null);
   };
 
@@ -2465,6 +2552,8 @@ export default function App() {
               inlinePrompt={inlinePrompt}
               setInlinePrompt={setInlinePrompt}
               onInlineSubmit={handleInlineSubmit}
+              onInlineCancel={handleInlineCancel}
+              isInlineRunning={isInlineRunning}
               onToggleTerminal={() => {
                 if (isEditorMaximized) {
                   setIsEditorMaximized(false);

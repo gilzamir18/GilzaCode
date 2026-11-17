@@ -13,9 +13,14 @@ document area. It is what opening a `.tex` from the explorer shows when the
 _Avoid_: preview (the PDF beside an open `.tex`), fullscreen, present mode.
 
 **Split view** (pt-BR: *Lado a lado*)
-A `.tex` and its Associated PDF side by side, the source beside the PDF. One
-button switches between Reading view and Split view. Opening a `.tex` at a
-given line shows Split view, because a line is a request to see the source.
+A `.tex` and its Associated PDF side by side, the source beside the PDF.
+Opening a `.tex` at a given line shows Split view, because a line is a request
+to see the source.
+
+**Source view** (pt-BR: *Só o .tex*)
+A `.tex` that has an Associated PDF shown alone, the source taking the whole
+document area and the PDF hidden. The toolbar has one button per view —
+Reading view, Split view, Source view — with the current one highlighted.
 
 **Look up** (pt-BR: *Pesquisar*)
 A one-off question about a selected excerpt, answered in its own card beside

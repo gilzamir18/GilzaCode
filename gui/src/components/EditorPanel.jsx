@@ -1,6 +1,6 @@
 import { Suspense, lazy, useRef, useEffect, useState, useCallback, useDeferredValue, useMemo } from 'react';
 import Editor, { DiffEditor } from '@monaco-editor/react';
-import { Files, RefreshCw, Save, X, Maximize2, Minimize2, GitCompare, Eye, EyeOff, Printer, Download, ZoomIn, ZoomOut, PlusSquare, Type, Trash2, FileText, HelpCircle, MoreHorizontal, Zap, PenLine, Columns2 } from 'lucide-react';
+import { Files, RefreshCw, Save, X, Maximize2, Minimize2, GitCompare, Eye, EyeOff, Printer, Download, ZoomIn, ZoomOut, PlusSquare, Type, Trash2, FileText, HelpCircle, MoreHorizontal, Zap, PenLine, Columns2, FileCode } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useCustomDialog } from './modals/CustomDialogProvider';
 import { getLanguage } from '../utils/language';
@@ -68,6 +68,8 @@ export default function EditorPanel({
   inlinePrompt,
   setInlinePrompt,
   onInlineSubmit,
+  onInlineCancel,
+  isInlineRunning = false,
   onToggleTerminal,
   activeProject,
   jumpToLine,
@@ -121,10 +123,11 @@ export default function EditorPanel({
   const [wysiwygFiles, setWysiwygFiles] = useState(() => new Set());
   const isWysiwygMode = !!selectedFile && wysiwygFiles.has(selectedFile);
   const [isPdfPreviewCollapsed, setIsPdfPreviewCollapsed] = useState(true);
-  // Reading view or Split view (GLOSSARY.md), per .tex that has an Associated
-  // PDF: { [file]: 'reading' | 'split' }. A file gets its entry when it is first
-  // shown — Reading view, or Split view when it was opened at a line — and keeps
-  // the user's choice while its tab stays open.
+  // Reading view, Split view or Source view (GLOSSARY.md), per .tex that has an
+  // Associated PDF: { [file]: 'reading' | 'split' | 'source' }. A file gets its
+  // entry when it is first shown — Reading view, or Split view when it was
+  // opened at a line — and keeps the user's choice while its tab stays open.
+  // For these files the view, not isPdfPreviewCollapsed, decides the layout.
   const [texPdfViews, setTexPdfViews] = useState({});
   const setTexPdfView = useCallback((file, view) => {
     setTexPdfViews((prev) => (prev[file] === view ? prev : { ...prev, [file]: view }));
@@ -306,7 +309,10 @@ export default function EditorPanel({
   const [isExportingDocx, setIsExportingDocx] = useState(false);
   const [isCleaningLatex, setIsCleaningLatex] = useState(false);
   const texPdfView = isTexFile ? texPdfViews[selectedFile] : undefined;
-  const isReadingView = texPdfView === 'reading' && !isPdfPreviewCollapsed && Boolean(pdfUrl);
+  const isReadingView = texPdfView === 'reading' && Boolean(pdfUrl);
+  // The .tex alone: Source view, or the collapsed pane of a .tex without an
+  // Associated PDF (an included file, a document not compiled yet).
+  const isTexSourceAlone = texPdfView ? texPdfView === 'source' : isPdfPreviewCollapsed;
   const pendingPdfSyncRef = useRef(null);
   // reveal_in_pdf's scroll, held while the viewer (re)loads the document.
   const pendingPdfRevealRef = useRef(null);
@@ -1646,7 +1652,7 @@ export default function EditorPanel({
       selectedFile={selectedFile}
       onSyncTexNavigate={handleSyncTexNavigate}
       onDocumentReady={handlePdfDocumentReady}
-      onCollapse={() => setIsPdfPreviewCollapsed(true)}
+      onCollapse={() => (texPdfView ? setTexPdfView(selectedFile, 'source') : setIsPdfPreviewCollapsed(true))}
       latexCompileProblem={latexCompileProblem}
       onFixLatexProblem={onFixLatexProblem}
       onLatexCompileError={onLatexCompileError}
@@ -1803,27 +1809,31 @@ export default function EditorPanel({
 
         <div className="vscode-editor-actions">
           {isTexFile && texPdfView && (
-            // A .tex with an Associated PDF: the button switches between
-            // Reading view and Split view (GLOSSARY.md). From the editor alone
-            // (the pane's own collapse button) it brings the PDF back beside it.
-            <button
-              onClick={() => {
-                if (isPdfPreviewCollapsed) {
-                  setIsPdfPreviewCollapsed(false);
-                  setTexPdfView(selectedFile, 'split');
-                } else {
-                  setTexPdfView(selectedFile, isReadingView ? 'split' : 'reading');
-                }
-              }}
-              className="vscode-editor-action-btn vscode-editor-action-btn-primary"
-              style={{ width: 'auto', minWidth: '36px', padding: '0 4px', gap: '2px' }}
-              title={isReadingView ? t('editorPanel.showTexBesidePdf', 'Show the .tex beside the PDF') : t('editorPanel.showPdfAlone', 'Show the PDF alone')}
-              aria-label={isReadingView ? t('editorPanel.showTexBesidePdf', 'Show the .tex beside the PDF') : t('editorPanel.showPdfAlone', 'Show the PDF alone')}
-              aria-pressed={isReadingView}
-            >
-              {isReadingView ? <Columns2 size={14} /> : <FileText size={14} />}
-              <span style={{ fontSize: '11px', fontWeight: 700, lineHeight: 1 }}>{isReadingView ? 'TEX' : 'PDF'}</span>
-            </button>
+            // A .tex with an Associated PDF: one button per view (GLOSSARY.md),
+            // the current one highlighted — the PDF alone, both, the .tex alone.
+            <div className="tex-view-switch" role="group" aria-label={t('editorPanel.texView', 'View')}>
+              {[
+                { view: 'reading', icon: <FileText size={14} />, label: 'PDF',
+                  title: t('editorPanel.showPdfAlone', 'Show the PDF alone') },
+                { view: 'split', icon: <Columns2 size={14} />, label: null,
+                  title: t('editorPanel.showTexBesidePdf', 'Show the .tex beside the PDF') },
+                { view: 'source', icon: <FileCode size={14} />, label: 'TEX',
+                  title: t('editorPanel.showTexAlone', 'Show the .tex alone') },
+              ].map(({ view, icon, label, title }) => (
+                <button
+                  key={view}
+                  onClick={() => setTexPdfView(selectedFile, view)}
+                  className={`vscode-editor-action-btn${texPdfView === view ? ' vscode-editor-action-btn-primary' : ''}`}
+                  style={{ width: 'auto', minWidth: '28px', padding: '0 4px', gap: '2px' }}
+                  title={title}
+                  aria-label={title}
+                  aria-pressed={texPdfView === view}
+                >
+                  {icon}
+                  {label && <span style={{ fontSize: '11px', fontWeight: 700, lineHeight: 1 }}>{label}</span>}
+                </button>
+              ))}
+            </div>
           )}
           {isTexFile && !texPdfView && (
             <button
@@ -2230,7 +2240,7 @@ export default function EditorPanel({
           <div style={{ height: '100%', background: 'var(--vscode-editor-bg)' }}>
             {renderTexPdfPreview()}
           </div>
-        ) : isTexFile && isPdfPreviewCollapsed ? (
+        ) : isTexFile && isTexSourceAlone ? (
           renderTexEditorSurface()
         ) : isTexFile ? (
           <Split
@@ -2336,7 +2346,8 @@ export default function EditorPanel({
           inlinePrompt={inlinePrompt}
           onSubmit={onInlineSubmit}
           onClose={() => setInlinePrompt(null)}
-          isRunning={false}
+          onCancel={onInlineCancel}
+          isRunning={isInlineRunning}
         />
       )}
 

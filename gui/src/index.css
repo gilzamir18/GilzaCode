@@ -1133,6 +1133,24 @@ input:focus, select:focus, textarea:focus {
   color: #73c991;
 }
 
+/* The .tex views (PDF alone, both, .tex alone): one group, the current view filled. */
+.tex-view-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 1px;
+  border: 1px solid var(--vscode-border);
+  border-radius: 5px;
+}
+
+.tex-view-switch .vscode-editor-action-btn {
+  height: 22px;
+}
+
+.tex-view-switch .vscode-editor-action-btn[aria-pressed="true"] {
+  background: var(--vscode-hover-bg);
+}
+
 .vscode-editor-action-btn:disabled {
   cursor: default;
   opacity: 0.5;

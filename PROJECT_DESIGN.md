@@ -277,13 +277,29 @@ reports a dangling name when the line runs; the cut was driven by it.
   chat list has no counterpart: Claude Code's own `/resume` lists sessions.
 - **The chat's place is the Claude Code panel** (`components/ClaudePanel.jsx`):
   same column, same Ctrl+T, same studio cell. Document actions hand it text
-  through one state (`claudePromptRequest`): *Ask about* (PDF, Markdown),
-  *Fix with AI* (LaTeX errors) and the editor's inline prompts (Ctrl+L,
-  Refine, Generate, Create illustration). In phase 2 the panel shows the text;
-  in phase 3 it pastes it into Claude Code's composer, unsent.
-- **Behaviour changes**: *Fix with AI* and the inline prompts used to run
-  GilzaBots' agent at once (a new chat, or a replaced selection). They now
-  stage a request the user sends, and Claude Code edits the files itself.
+  through one state (`claudePromptRequest`): *Ask about* (PDF, Markdown) and
+  *Fix with AI* (LaTeX errors). In phase 2 the panel shows the text; in phase
+  3 it pastes it into Claude Code's composer, unsent.
+- **Behaviour changes**: *Fix with AI* used to run GilzaBots' agent at once (a
+  new chat). It now stages a request the user sends, and Claude Code edits the
+  files itself.
+- **Inline edits** (`gilzacode/inline_edit.py`, `POST /api/inline-edit`,
+  `utils/inlineEdit.js`, `App.handleInlineSubmit`): the editor's Refine,
+  Generate content, Create illustration and Ctrl+L prompts write their result
+  straight into the editor, as in GilzaBots, without the Claude Code panel.
+  Claude Code runs headless (`claude -p`) with no tools, the file around the
+  selection or cursor in the prompt, and answers through `--json-schema`, so
+  the answer is the content itself and never has to be cut out of fences.
+  Refine (and Ctrl+L over a selection) replaces the selection; Generate (and
+  Ctrl+L without one) inserts at the cursor. The edit goes into the unsaved
+  buffer as one undo step. Create illustration saves an SVG as
+  `illustrations/illustration_<time>.svg` at the project root (with a PDF copy
+  through PyMuPDF for a `.tex`, which `\includegraphics` takes) and inserts a
+  reference below the selection: a `figure` in LaTeX, adding
+  `\usepackage{graphicx}` when nothing loads it, an image in Markdown or HTML.
+  When the buffer changed while Claude Code worked, nothing is written. The
+  model is `inline_edit_model`, defaulting to the Look up model. Cancel stops
+  waiting and writes nothing.
 - **Projects** use `/api/projects/*`, with a project's settings (name,
   folder, main file, Git root, compile on save) saved through
   `/api/projects/update`. Unknown or mistyped fields are refused.
@@ -317,13 +333,16 @@ reports a dangling name when the line runs; the cut was driven by it.
   switching tabs. A result opens the file with the match selected (`jumpToLine`
   carries a column and length); a Markdown file shown as a full preview is not
   switched back to the editor for it.
-- **Reading view and Split view** (`EditorPanel.jsx`; terms in `GLOSSARY.md`).
-  A `.tex` with an Associated PDF (`name.pdf` beside `name.tex`;
-  `/api/latex/check-pdf` answers `associated`, `pdf_path` and `source_tex`)
-  opens in Reading view: the PDF alone across the document area, in whatever
-  layout is active (no layout switch, so Claude Code and the terminal stay on
-  screen). The toolbar's PDF button switches to Split view (the `.tex` beside
-  the PDF) and back. A `.tex` opened at a line (a search result, an error,
+- **Reading view, Split view and Source view** (`EditorPanel.jsx`; terms in
+  `GLOSSARY.md`). A `.tex` with an Associated PDF (`name.pdf` beside
+  `name.tex`; `/api/latex/check-pdf` answers `associated`, `pdf_path` and
+  `source_tex`) opens in Reading view: the PDF alone across the document area,
+  in whatever layout is active (no layout switch, so Claude Code and the
+  terminal stay on screen). The toolbar has one button per view — PDF alone,
+  the `.tex` beside the PDF (Split view), the `.tex` alone (Source view) — the
+  current one highlighted; the PDF pane's own collapse button also goes to
+  Source view. For these files the view, not the shared
+  `isPdfPreviewCollapsed`, decides the layout. A `.tex` opened at a line (a search result, an error,
   `open_file` with a line, `reveal_in_pdf`, inverse search from the PDF) shows
   Split view, because a line is a request to see the source. The choice is kept
   per file while its tab is open (`texPdfViews`); closing the tab forgets it.
