@@ -184,12 +184,52 @@ def handle(message: dict) -> None:
         send({"jsonrpc": "2.0", "id": mid, "error": {"code": -32601, "message": "Method not found"}})
 
 
-def main() -> int:
+#: ``gilzacode-mcp hook <event>``: the Claude Code hooks of the agent history
+#: (``agent_history.py``), and the endpoint each one calls.
+HOOK_ENDPOINTS = {
+    "turn-start": "/api/agent-history/turn-start",
+    "turn-end": "/api/agent-history/turn-end",
+}
+
+
+def run_hook(event: str) -> int:
+    """One Claude Code hook: report a turn edge to GilzaCode.
+
+    Claude Code passes the hook's input as JSON on stdin. Nothing is printed on
+    stdout, which a ``UserPromptSubmit`` hook would add to the prompt. A failure
+    exits 1 with the reason on stderr: Claude Code shows it and goes on, so the
+    turn is never blocked, and the gap in the history is not silent.
+    """
+    endpoint = HOOK_ENDPOINTS.get(event)
+    if endpoint is None:
+        print(f"gilzacode-mcp: unknown hook {event!r}", file=sys.stderr)
+        return 1
+    try:
+        payload = json.loads(sys.stdin.read() or "{}")
+    except ValueError:
+        payload = {}
+    payload = payload if isinstance(payload, dict) else {}
+    project = os.path.abspath(os.environ.get("GILZACODE_PROJECT") or payload.get("cwd") or os.getcwd())
+    body = {"projectPath": project, "sessionId": str(payload.get("session_id") or "")}
+    if event == "turn-start":
+        body["prompt"] = str(payload.get("prompt") or "")
+    try:
+        call_app("POST", endpoint, body=body, timeout=600)
+    except ToolError as exc:
+        print(f"GilzaCode agent history: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdin, sys.stdout):
         try:
             stream.reconfigure(encoding="utf-8")
         except (AttributeError, ValueError):
             pass
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["hook"]:
+        return run_hook(argv[1] if len(argv) > 1 else "")
     for raw in sys.stdin:
         raw = raw.strip()
         if not raw:

@@ -4,7 +4,8 @@ import { Folder, File, ChevronRight, ChevronDown } from 'lucide-react';
 import CloudFileBadge from './CloudFileBadge';
 import InlineCreateNode from './InlineCreateNode';
 import { isSameTreePath, treePathContains } from '../utils/inlineCreate';
-import { markerPathKey } from '../utils/fileMarkers';
+import { hasAgentChanges, markerPathKey } from '../utils/fileMarkers';
+import AgentChangeBadge from './AgentChangeBadge';
 
 // Recursive file/directory tree node with drag-and-drop, inline rename and
 // inline creation support.
@@ -13,6 +14,7 @@ export default function FileNode({
   selectedFile,
   selectedNodes,
   unsavedFiles,
+  agentChangedFiles,
   handleNodeSelect,
   handleFileSelect,
   handleNodeContextMenu,
@@ -143,6 +145,7 @@ export default function FileNode({
 
   const { t } = useTranslation();
   const isUnsaved = !isDir && Boolean(unsavedFiles?.has(markerPathKey(node.path)));
+  const agentChanged = hasAgentChanges(agentChangedFiles, node.path, isDir);
 
   const renderRenameInput = () => (
     <input
@@ -217,6 +220,7 @@ export default function FileNode({
                 selectedFile={selectedFile}
                 selectedNodes={selectedNodes}
                 unsavedFiles={unsavedFiles}
+                agentChangedFiles={agentChangedFiles}
                 handleNodeSelect={handleNodeSelect}
                 handleFileSelect={handleFileSelect}
                 handleNodeContextMenu={handleNodeContextMenu}
@@ -259,6 +263,7 @@ export default function FileNode({
         <span className="truncate">
           {node.name}
           {isUnsaved && <span title={t('explorer.unsaved', 'Unsaved changes')}> *</span>}
+          {agentChanged && <AgentChangeBadge inside={isDir} />}
         </span>
       )}
       <CloudFileBadge state={cloudState} />

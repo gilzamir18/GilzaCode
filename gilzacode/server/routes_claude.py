@@ -156,24 +156,49 @@ def _plugin_error(exc: ClaudeCliError) -> web.Response:
 
 
 @routes.get("/api/claude/skills")
-async def skills_status(_request: web.Request) -> web.Response:
+async def skills_status(request: web.Request) -> web.Response:
+    """``?projectPath=``: with it, the status of the ``local`` scope for that project too."""
     try:
-        return web.json_response(await claude_plugins.skills_status())
+        return web.json_response(await claude_plugins.skills_status(request.query.get("projectPath", "")))
+    except ValueError as exc:
+        return error(400, str(exc))
     except ClaudeCliError as exc:
         return _plugin_error(exc)
 
 
 @routes.post("/api/claude/skills/install")
-async def install_skills(_request: web.Request) -> web.Response:
+async def install_skills(request: web.Request) -> web.Response:
+    """``{"scope": "user" | "local", "projectPath"}``."""
+    data = await read_json(request)
     try:
-        return web.json_response(await claude_plugins.install_skills())
+        return web.json_response(await claude_plugins.install_skills(
+            str(data.get("scope") or "user"), str(data.get("projectPath") or "")))
+    except ValueError as exc:
+        return error(400, str(exc))
+    except ClaudeCliError as exc:
+        return _plugin_error(exc)
+
+
+@routes.post("/api/claude/skills/uninstall")
+async def uninstall_skills(request: web.Request) -> web.Response:
+    """``{"scope": "user" | "local", "projectPath"}``: removes it from that scope only."""
+    data = await read_json(request)
+    try:
+        return web.json_response(await claude_plugins.uninstall_skills(
+            str(data.get("scope") or ""), str(data.get("projectPath") or "")))
+    except ValueError as exc:
+        return error(400, str(exc))
     except ClaudeCliError as exc:
         return _plugin_error(exc)
 
 
 @routes.post("/api/claude/skills/update")
-async def update_skills(_request: web.Request) -> web.Response:
+async def update_skills(request: web.Request) -> web.Response:
+    """``{"projectPath"}``: updates every scope the skills are installed in."""
+    data = await read_json(request)
     try:
-        return web.json_response(await claude_plugins.update_skills())
+        return web.json_response(await claude_plugins.update_skills(str(data.get("projectPath") or "")))
+    except ValueError as exc:
+        return error(400, str(exc))
     except ClaudeCliError as exc:
         return _plugin_error(exc)

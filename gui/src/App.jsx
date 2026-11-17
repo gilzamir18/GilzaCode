@@ -17,7 +17,10 @@ import {
 } from './utils/logMerge';
 import { resolveInlineCreatePath } from './utils/inlineCreate';
 import { collectTreePaths, outermostPaths } from './utils/explorerSelection';
-import { markerPathKey, unsavedFilePaths } from './utils/fileMarkers';
+import {
+  markerPathKey, removeAgentChangedFiles, renameAgentChangedFiles, unsavedFilePaths, withAgentChangedFiles,
+  withoutAgentChangedFile,
+} from './utils/fileMarkers';
 
 // Hooks
 import { useResizing } from './hooks/useResizing';
@@ -413,6 +416,13 @@ export default function App() {
   const [isInlineRunning, setIsInlineRunning] = useState(false);
   const inlineAbortRef = useRef(null);
 
+  // ── Agent history (gilzacode/agent_history.py) ─────────────────────────────
+  // Files the last Claude Code turns changed (the robot badge, until the file is
+  // opened), and a counter the Git sidebar's Agent tab reloads on.
+  const [agentChangedFiles, setAgentChangedFiles] = useState(() => new Set());
+  const [agentHistorySeq, setAgentHistorySeq] = useState(0);
+  const agentHistoryEventRef = useRef(null);
+
   // ── Inline prompt (editor Ctrl+L / context-menu actions) ────────────────
 
   // ── Refs ──────────────────────────────────────────────────────────────────
@@ -497,6 +507,49 @@ export default function App() {
       setFileContent(content);
     }
     addLog('info', t('app.reloadedFromDisk', { path: openFile }));
+  }
+
+  // A turn edge from Claude Code's hooks, for any project; only the one on
+  // screen is acted on. A finished turn marks the files it wrote and brings the
+  // tree and the open editor up to date with the disk.
+  const isProjectOnScreen = (projectPath) => {
+    const current = documentContextRef.current?.projectPath;
+    if (!current || !projectPath) return false;
+    const norm = (value) => String(value).replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+    return norm(current) === norm(projectPath);
+  };
+  agentHistoryEventRef.current = (data) => {
+    if (!isProjectOnScreen(data.project_path)) return;
+    setAgentHistorySeq(seq => seq + 1);
+    const files = data.turn?.files || [];
+    if (data.event === 'ended' && files.length) {
+      setAgentChangedFiles(prev => withAgentChangedFiles(prev, files.filter(f => f.status !== 'D').map(f => f.path)));
+      fetchFiles();
+      refreshSelectedFileFromDiskIfUnmodified();
+    } else if (data.event === 'undone') {
+      setAgentChangedFiles(prev => files.reduce((set, f) => withoutAgentChangedFile(set, f.path), prev));
+    }
+  };
+
+  // An undone turn rewrote or deleted its files. Their open tabs had nothing
+  // unsaved (the Agent tab checks first), so a rewritten file's buffer takes
+  // the disk content and a deleted file's tab is closed.
+  async function handleAgentTurnUndone({ restored = [], deleted = [] } = {}) {
+    const projectPath = activeProject?.project_path;
+    if (!projectPath) return;
+    for (const path of restored) {
+      if (!openFiles.some(open => sameFilePath(open, path))) continue;
+      try {
+        const res = await fetch(`/api/file/read?projectPath=${encodeURIComponent(projectPath)}&filePath=${encodeURIComponent(path)}&t=${Date.now()}`);
+        if (res.ok) handleTexFileWritten(path, (await res.json()).content);
+      } catch { /* the tree refresh below still shows the file */ }
+    }
+    for (const path of deleted) {
+      if (openFiles.some(open => sameFilePath(open, path))) handleCloseTab(path);
+      dropDiskContents(path);
+    }
+    addLog('info', t('app.agentTurnUndone', { count: restored.length + deleted.length, defaultValue: 'Agent turn undone: {{count}} files put back.' }));
+    fetchFiles();
   }
 
   // ── Hooks ─────────────────────────────────────────────────────────────────
@@ -684,6 +737,7 @@ export default function App() {
 
   useEffect(() => {
     diskFileContentsRef.current = {};
+    setAgentChangedFiles(new Set());
   }, [activeProject?.project_path]);
 
   useEffect(() => {
@@ -1257,6 +1311,7 @@ export default function App() {
   const handleFileSelect = async (filePath, jumpLine = null, { focusEditor = true, column = null, length = 0 } = {}) => {
     if (!activeProject) return;
     setIsBottomMaximized(false);
+    setAgentChangedFiles(prev => withoutAgentChangedFile(prev, filePath));
     if (selectedFile) {
       const currentContent = getCurrentTextFileContent();
       setFileContents(prev => ({ ...prev, [selectedFile]: currentContent }));
@@ -1563,6 +1618,10 @@ export default function App() {
         setExternalCompile(data);
         return;
       }
+      if (data.type === 'agent_history') {
+        agentHistoryEventRef.current?.(data);
+        return;
+      }
       if (data.type !== 'command') return;
       const reads = data.action === 'get_editor_state' || data.action === 'get_pdf_view' || data.action === 'get_problems';
       Promise.resolve(ideCommandRunnerRef.current(data))
@@ -1756,6 +1815,7 @@ export default function App() {
           if (isFileInsidePath(selectedFile, node.path)) setSelectedFile(prev => replaceFilePathPrefix(prev, node.path, newPath));
         }
         moveDiskContents(node.path, newPath);
+        setAgentChangedFiles(prev => renameAgentChangedFiles(prev, node.path, newPath));
         await fetchFiles();
       } else {
         const e = await res.json();
@@ -1836,6 +1896,7 @@ export default function App() {
               setFileContents(prev => { const n = {}; for (const [k, v] of Object.entries(prev)) if (!isFileInsidePath(k, pathToDelete)) n[k] = v; return n; });
               setOriginalFileContents(prev => { const n = {}; for (const [k, v] of Object.entries(prev)) if (!isFileInsidePath(k, pathToDelete)) n[k] = v; return n; });
               dropDiskContents(pathToDelete);
+              setAgentChangedFiles(prev => removeAgentChangedFiles(prev, pathToDelete));
               if (isFileInsidePath(selectedFile, pathToDelete)) {
                 // If it's the current file, we can't reliably pick the 'last' open file easily in a loop, so we just clear it.
                 setSelectedFile(null); setFileContent('');
@@ -1876,6 +1937,7 @@ export default function App() {
           setFileContents(prev => { const n = {}; for (const [k, v] of Object.entries(prev)) n[isFileInsidePath(k, oldPath) ? replaceFilePathPrefix(k, oldPath, newPath) : k] = v; return n; });
           setOriginalFileContents(prev => { const n = {}; for (const [k, v] of Object.entries(prev)) n[isFileInsidePath(k, oldPath) ? replaceFilePathPrefix(k, oldPath, newPath) : k] = v; return n; });
           moveDiskContents(oldPath, newPath);
+          setAgentChangedFiles(prev => renameAgentChangedFiles(prev, oldPath, newPath));
           if (isFileInsidePath(selectedFile, oldPath)) setSelectedFile(prev => replaceFilePathPrefix(prev, oldPath, newPath));
         } else {
           const e = await res.json();
@@ -2454,6 +2516,7 @@ export default function App() {
                 selectedFile={selectedFile}
                 selectedNodes={selectedNodes}
                 unsavedFiles={unsavedFiles}
+                agentChangedFiles={agentChangedFiles}
                 handleNodeSelect={handleNodeSelect}
                 onSelectAllNodes={handleSelectAllNodes}
                 handleFileSelect={handleFileSelect}
@@ -2502,6 +2565,9 @@ export default function App() {
                 gitRootPath={currentGitRootPath}
                 onPickGitRoot={() => openDirPicker('git-root', currentGitRootPath || activeProject?.project_path || '~')}
                 onClearGitRoot={() => updateActiveGitRoot('')}
+                agentHistorySignal={agentHistorySeq}
+                isFileUnsaved={isOpenFileUnsaved}
+                onAgentTurnUndone={handleAgentTurnUndone}
               />
             )}
           </aside>
@@ -2530,6 +2596,7 @@ export default function App() {
               fileContent={fileContent}
               originalFileContents={originalFileContents}
               unsavedFiles={unsavedFiles}
+              agentChangedFiles={agentChangedFiles}
               isSaving={isSaving}
               theme={theme}
               uiScale={uiScale}
@@ -2709,6 +2776,7 @@ export default function App() {
 
       {isSettingsOpen && (
         <SettingsModal
+          activeProject={activeProject}
           onSpeechSettingsChange={bumpSpeechSettings}
           onClaudeSessionReplaced={() => setClaudeRestartRequest(r => ({ seq: (r?.seq || 0) + 1 }))}
           onClose={() => setIsSettingsOpen(false)}

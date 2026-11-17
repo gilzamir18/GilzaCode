@@ -37,6 +37,7 @@ const TRANSLATE_CUSTOM = '__custom__';
 
 // IDE global settings modal (theme, font size, tab size, word wrap, minimap, optional deps).
 export default function SettingsModal({
+  activeProject = null,
   onClose,
   settingsTab,
   setSettingsTab,
@@ -451,7 +452,7 @@ export default function SettingsModal({
                 <span style={{ fontSize: '11px', color: 'var(--vscode-text-muted)' }}>{t('settingsModal.panelMaxLinesHint')}</span>
               </div>
 
-              <ClaudeSkillsSection />
+              <ClaudeSkillsSection projectPath={activeProject?.project_path || ''} projectName={activeProject?.project_name || activeProject?.name || ''} />
 
               <ClaudeModelSection onSessionReplaced={onClaudeSessionReplaced} />
 

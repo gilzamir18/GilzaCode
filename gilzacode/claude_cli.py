@@ -300,9 +300,40 @@ def write_mcp_config() -> str:
     return str(path)
 
 
+def hook_command(event: str) -> str:
+    """The shell command of one agent-history hook: ``gilzacode-mcp hook <event>``.
+
+    Claude Code runs a hook's command through a shell (Git Bash or cmd on
+    Windows), so the executable is quoted and written with forward slashes,
+    which both read the same way.
+    """
+    from pathlib import Path
+    command, args = bridge_command()
+    return " ".join([f'"{Path(command).as_posix()}"', *args, "hook", event])
+
+
+def write_hook_settings() -> str:
+    """Write ``<gilzacode home>/agent-history-hooks.json``, the panel session's hooks; return its path.
+
+    ``UserPromptSubmit`` begins an agent-history turn and ``Stop`` ends it
+    (``agent_history.py``). ``SessionEnd`` ends a turn the session left open,
+    since an interrupted turn gets no ``Stop``.
+    """
+    from gilzacode.paths import gilzacode_home, write_text_atomic
+
+    def hook(event: str) -> list[dict]:
+        return [{"hooks": [{"type": "command", "command": hook_command(event), "timeout": 600}]}]
+
+    settings = {"hooks": {"UserPromptSubmit": hook("turn-start"), "Stop": hook("turn-end"),
+                          "SessionEnd": hook("turn-end")}}
+    path = gilzacode_home() / "agent-history-hooks.json"
+    write_text_atomic(path, json.dumps(settings, indent=2))
+    return str(path)
+
+
 def claude_session_argv() -> list[str]:
-    """`claude` with the GilzaCode bridge added to the user's own MCP servers."""
-    return [find_claude(), "--mcp-config", write_mcp_config(),
+    """`claude` with the GilzaCode bridge added to the user's own MCP servers, and the agent-history hooks."""
+    return [find_claude(), "--mcp-config", write_mcp_config(), "--settings", write_hook_settings(),
             "--allowedTools", ",".join(f"mcp__gilzacode__{name}" for name in PRE_ALLOWED_TOOLS)]
 
 

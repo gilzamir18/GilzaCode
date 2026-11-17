@@ -229,7 +229,8 @@
     "reviewFileFilter": "Arquivo",
     "reviewAllFiles": "Todos os arquivos",
     "nestedRepoWarningTitle": "Pastas fora do histórico do agente",
-    "nestedRepoWarningBody": "O Git guarda uma pasta com .git próprio como um link, então o histórico do agente nunca registra o que muda dentro dela. Abra essa pasta como o projeto, ou remova o .git interno, para revisar essas mudanças."
+    "nestedRepoWarningBody": "O Git guarda uma pasta com .git próprio como um link, então o histórico do agente nunca registra o que muda dentro dela. Abra essa pasta como o projeto, ou remova o .git interno, para revisar essas mudanças.",
+    "agentTab": "Agente"
   },
   "editorPanel": {
     "emptyRichText": "Nenhum conteúdo editável. Abra um arquivo .tex com o corpo do documento.",
@@ -863,7 +864,7 @@
     "gilzacodeSkillsInstallError": "Não foi possível instalar as skills do GilzaCode: ",
     "gilzacodeSkillsUpdateError": "Não foi possível atualizar as skills do GilzaCode: ",
     "gilzacodeSkillsStatusError": "Não foi possível consultar as skills do GilzaCode: ",
-    "gilzacodeSkillsHint": "Skills do repositório GilzaCodeSkills, instaladas para o seu usuário como o plugin gilzacode-skills do Claude Code. Funcionam em todos os projetos, no GilzaCode ou em qualquer lugar onde o Claude Code rode. Requer Git e conexão com a internet.",
+    "gilzacodeSkillsHint": "Skills do repositório GilzaCodeSkills, instaladas como o plugin gilzacode-skills do Claude Code. Global as instala para o seu usuário em todos os projetos, no GilzaCode ou onde o Claude Code rodar. \"Só este projeto\" as instala só no projeto aberto, no .claude/settings.local.json dele, que o Claude Code mantém fora do Git. Requer Git e conexão com a internet.",
     "claudeModelTitle": "Modelo do Claude Code",
     "claudeModelAnthropic": "Conta Anthropic (padrão)",
     "claudeModelOllama": "Ollama (servidor local ou ollama.com)",
@@ -970,7 +971,17 @@
     "dictationHint": "Grava do microfone e escreve o que você falou no compositor do chat, para você revisar antes de enviar. O modelo roda nesta máquina, então nada é enviado para fora. Modelos maiores são bem mais precisos fora do inglês: em uma frase de teste em português, tiny e base erraram uma palavra enquanto o small a reproduziu exatamente.",
     "chatThoughtPreviewTokens": "Raciocínio exibido no chat (tokens)",
     "chatThoughtPreviewTokensHint": "Enquanto um turno roda, o chat mantém à vista apenas as últimas linhas do raciocínio. O raciocínio inteiro é lido no painel Agent Thinking, para onde o chat leva (padrão: 1000).",
-    "claudeCliTitle": "Claude Code CLI (obrigatório)"
+    "claudeCliTitle": "Claude Code CLI (obrigatório)",
+    "gilzacodeSkillsScopeUser": "Global (todos os projetos)",
+    "gilzacodeSkillsScopeLocal": "Só este projeto ({{project}}), só para você",
+    "gilzacodeSkillsNoProject": "Abra um projeto para instalá-las só nele.",
+    "gilzacodeSkillsInstallScopeBtn": "Instalar",
+    "gilzacodeSkillsRemoveBtn": "Remover",
+    "gilzacodeSkillsRemoving": "Removendo…",
+    "gilzacodeSkillsRemoveConfirm": "Remover as skills do GilzaCode de: {{scope}}?",
+    "gilzacodeSkillsRemoveSuccess": "Removidas. Reinicie o Claude Code, ou digite /reload-plugins nele, para a mudança valer.",
+    "gilzacodeSkillsRemoveError": "Não foi possível remover as skills do GilzaCode: ",
+    "gilzacodeSkillsUpdateSuccessAll": "Atualizadas. Reinicie o Claude Code, ou digite /reload-plugins nele, para carregar a nova versão."
   },
   "hardwareModal": {
     "title": "Configuração de Hardware",
@@ -1382,7 +1393,8 @@
     "editBranchNotSent": "A branch \"{{name}}\" foi criada, mas a mensagem editada não foi enviada ({{error}}). Ela está na caixa de mensagem: envie-a por lá.",
     "monitorChatMissing": "O chat deste evento de monitor não existe mais.",
     "runningCommand": "Executando {{command}}",
-    "slashCommandSyncFailed": "Não foi possível recarregar o chat após o comando: {{error}}"
+    "slashCommandSyncFailed": "Não foi possível recarregar o chat após o comando: {{error}}",
+    "agentTurnUndone": "Turno do agente desfeito: {{count}} arquivos restaurados."
   },
   "onboarding": {
     "welcome": "Bem-vindo ao GilzaBots! 🚀",
@@ -2145,5 +2157,27 @@
     "installingHint": "O instalador baixa o Claude Code e não mostra progresso; isso pode levar um ou dois minutos.",
     "guideBtn": "Guia de instalação",
     "checkAgain": "Verificar novamente"
+  },
+  "agentHistory": {
+    "subtitle": "O que cada turno do Claude Code no painel mudou.",
+    "running": "O Claude Code está trabalhando num turno…",
+    "refresh": "Atualizar",
+    "empty": "Nenhum turno mudou arquivos ainda. Cada pedido que você envia ao Claude Code no painel vira uma entrada aqui quando muda algo. Uma sessão iniciada antes deste recurso não registra nada até o painel reiniciá-la.",
+    "nestedRepos": "Pastas com um repositório Git próprio não são registradas: {{folders}}",
+    "noPrompt": "(pedido sem texto)",
+    "fileCount_one": "{{count}} arquivo",
+    "fileCount_other": "{{count}} arquivos",
+    "undone": "desfeito",
+    "undo": "Desfazer",
+    "undoing": "Desfazendo…",
+    "undoHint": "Restaurar os arquivos que este turno mudou",
+    "undoWhileRunning": "Espere o Claude Code terminar o turno",
+    "undoTitle": "Desfazer turno do agente",
+    "undoConfirm": "Voltar estes arquivos ao estado de antes deste turno?\n{{files}}",
+    "undoConflict": "Estes arquivos mudaram depois do turno, e desfazê-lo descarta essas mudanças:\n{{files}}\n\nDesfazer mesmo assim?",
+    "undoUnsaved": "Salve ou descarte antes as alterações não salvas nestes arquivos:\n{{files}}",
+    "statusAdded": "Criado pelo turno",
+    "statusModified": "Modificado pelo turno",
+    "statusDeleted": "Apagado pelo turno"
   }
 }

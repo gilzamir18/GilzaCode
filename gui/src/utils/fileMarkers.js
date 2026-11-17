@@ -6,9 +6,9 @@
 //   that is the diff view's baseline, and against it a saved file, or any file
 //   of a project without a repository, would stay "dirty" forever.
 // - Changed by the agent (a separate badge): the file differs between the start
-//   and the end of an agent turn, as reported by the turn's shadow-git
-//   checkpoint (`checkpoint_finalized.changed_files`). It stays until the user
-//   opens the file.
+//   and the end of a Claude Code turn, as reported by the agent history's
+//   snapshots (gilzacode/agent_history.py, the `agent_history` event's
+//   `turn.files`). It stays until the user opens the file.
 
 import { normalizeTreePath, treePathContains } from './inlineCreate.js';
 

@@ -27,6 +27,7 @@ import { FormattedMessage } from '../utils/formatMessage';
 import { pastePlainTextIntoMonaco } from '../utils/monacoPaste';
 import { viewportPointToApp } from '../utils/uiScale';
 import { markerPathKey } from '../utils/fileMarkers';
+import AgentChangeBadge from './AgentChangeBadge';
 import Split from 'react-split';
 import PdfPreview from './PdfPreview';
 import HtmlPreview from './HtmlPreview';
@@ -47,6 +48,7 @@ export default function EditorPanel({
   fileContent,
   originalFileContents,
   unsavedFiles,
+  agentChangedFiles,
   isSaving,
   theme,
   uiScale = 1,
@@ -1795,6 +1797,7 @@ export default function EditorPanel({
                 >
                   {filePath.replace(/\\/g, '/').split('/').pop()}
                   {isUnsaved && <span title={t('explorer.unsaved', 'Unsaved changes')}> *</span>}
+                  {agentChangedFiles?.has(markerPathKey(filePath)) && <AgentChangeBadge />}
                 </span>
                 <button
                   onClick={(e) => handleCloseTab(filePath, e)}

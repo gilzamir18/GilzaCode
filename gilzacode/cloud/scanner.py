@@ -1,7 +1,7 @@
 """Walk a project directory and describe what should be mirrored.
 
 Change detection is manifest-based (path + size + mtime + content hash) rather
-than built on the shadow git repository in ``.gilzacode/.shadowgit``. Two reasons
+than built on a shadow git repository (GilzaBots' design note). Two reasons
 decided this:
 
 * the shadow repo deliberately ignores LaTeX build output, so it cannot report
@@ -28,6 +28,7 @@ from .state import CloudSettings, SyncEntry
 # would break the sync itself if copied between machines.
 ALWAYS_EXCLUDED = (
     ".gilzacode/cloud/*",        # this machine's sync baseline
+    ".gilzacode/agent-history/*",  # this machine's agent history (agent_history.py)
     ".git/*",
     ".hg/*",
     ".svn/*",
@@ -159,9 +160,10 @@ def scan_project(
     for dirpath, dirnames, filenames in os.walk(root):
         # Prune in place so os.walk never descends into the heavy directories.
         dirnames[:] = [d for d in dirnames if d not in PRUNED_DIRS]
-        # `.gilzacode/cloud` holds this machine's baseline; never walk into it.
+        # `.gilzacode/cloud` holds this machine's baseline and
+        # `.gilzacode/agent-history` its agent history; never walk into them.
         if os.path.abspath(dirpath) == os.path.join(root, ".gilzacode"):
-            dirnames[:] = [d for d in dirnames if d != "cloud"]
+            dirnames[:] = [d for d in dirnames if d not in ("cloud", "agent-history")]
 
         for filename in filenames:
             absolute = os.path.join(dirpath, filename)

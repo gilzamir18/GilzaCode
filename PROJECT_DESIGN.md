@@ -228,10 +228,9 @@ changed. Their own tests came with them. The routes are new.
   two edits never rewrite the same file at once.
 - **Git** (`routes_git.py`, `git_repo.py`): status, diff, log, stage, discard,
   commit and file-at-HEAD, against the user's repository or a Git root inside
-  the project. GilzaBots' agent checkpoint history ("shadow" repository,
-  review layout, restore/archive) is not ported. A request for it is refused
-  with a pointer to Claude Code's `/rewind`, not served from the user's
-  repository.
+  the project. GilzaBots' agent checkpoint history is not served by these
+  endpoints (a `shadow` request is refused): it has its own, see *Agent
+  history* in §8.
 - **Terminal** (`routes_terminal.py`): one winpty PowerShell (Linux: bash in a
   PTY) per bottom-panel tab, streamed over SSE with the stream offset as the event id, so a
   reconnecting client receives only what it missed. `/api/terminal/output` is
@@ -255,8 +254,9 @@ reports a dangling name when the line runs; the cut was driven by it.
 - **Removed**: chat and chat list, agent runs and their windows (plan review,
   ask, interactive command), slash commands, models, providers and
   connections, hardware, monitors, MCP connectors, asset store,
-  onboarding, tutorial, dictation, the Agent Thinking tab, agent change
-  badges, and the `chat-bottom` and `review` layouts. Settings lost the
+  onboarding, tutorial, dictation, the Agent Thinking tab, and the
+  `chat-bottom` and `review` layouts (the agent change badges came back with
+  the agent history, §8). Settings lost the
   agent sections (reasoning size, prompt evolution, image generation, Docker
   sandbox, data folder, ephemeral parameters) and the window-graphics,
   feedback and uninstall sections, which referred to GilzaBots.
@@ -355,7 +355,8 @@ reports a dangling name when the line runs; the cut was driven by it.
   threw a ReferenceError (`formatMessage.jsx` read a variable from another
   function's scope).
 - **Known leftovers**: some older i18n strings still mention the chat, and
-  `GitSidebar.jsx` still carries GilzaBots' inactive review-mode branches.
+  `GitSidebar.jsx` still carries GilzaBots' inactive review-mode branches
+  (the agent history is its own tab, `AgentHistoryPanel.jsx`).
 
 ## 8. Claude Code (`claude_cli.py`, `routes_claude.py`, `snippets.py`, `components/ClaudePanel.jsx`)
 
@@ -531,20 +532,32 @@ GilzaCode's skills for Claude Code live in their own repository,
 [`gilzamir18/GilzaCodeSkills`](https://github.com/gilzamir18/GilzaCodeSkills).
 That repository is both a Claude Code marketplace (`gilzacode`) and the one
 plugin it lists (`gilzacode-skills`, with `source: "./"`). The skills are under
-`skills/<name>/`. Settings > General installs it with one button.
+`skills/<name>/`. Settings > General installs it globally or only for the open
+project, each with its own Install / Remove.
 
 - **Claude Code installs it, not GilzaCode.** GilzaCode does not write into
   `~/.claude`. It runs the CLI's plugin commands, so the result is the same as
   `/plugin install`, and `/plugin` can list, disable or remove it:
   - status: `claude plugin list --json`;
   - install: `claude plugin install gilzacode-skills --marketplace
-    gilzamir18/GilzaCodeSkills --scope user --json`. This adds the marketplace
-    to the user's settings when it is missing;
+    gilzamir18/GilzaCodeSkills --scope <scope> --json`. This adds the
+    marketplace to the user's settings when it is missing;
+  - remove: `claude plugin uninstall gilzacode-skills@gilzacode --scope
+    <scope> --json`, from that scope only;
   - update: `claude plugin marketplace update gilzacode`, then
-    `claude plugin update gilzacode-skills@gilzacode`.
-- **User scope.** The skills serve every project, so the plugin is not
-  installed per project. The commands run in the home folder, never in a
-  project.
+    `claude plugin update gilzacode-skills@gilzacode --scope <scope>` for each
+    scope it is installed in.
+- **Two scopes.** *Global* is Claude Code's `user` scope: every project, run in
+  the home folder. *This project only* is its `local` scope: the open project,
+  this user only, recorded in `<project>/.claude/settings.local.json`, which
+  Claude Code adds to the user's global Git ignore (`**/.claude/settings.local.json`
+  in `~/.config/git/ignore`, seen on the real CLI). Its commands run in the
+  project folder, which is how Claude Code ties a local install to a project.
+  The `project` scope (the committed `.claude/settings.json`, which prompts
+  collaborators) is deliberately not offered. `plugin list` reports local
+  installs of *every* project, each with its `projectPath`, so the status
+  counts only the open project's. Without an open project the local row says
+  to open one; a local request without a valid project is refused (400).
 - **Nothing is accepted on the user's behalf.** `-y` is never passed. It
   would accept a command the marketplace declares without anyone seeing it.
   This marketplace declares none.
@@ -555,11 +568,66 @@ plugin it lists (`gilzacode-skills`, with `source: "./"`). The skills are under
 - **A running session does not see it yet.** Claude Code reads plugins when a
   session starts, so the interface tells the user to restart the panel's
   session or type `/reload-plugins`.
-- **Endpoints:** `GET /api/claude/skills`, `POST /api/claude/skills/install`,
-  `POST /api/claude/skills/update`.
+- **Endpoints:** `GET /api/claude/skills?projectPath=` (`scopes.user`,
+  `scopes.local`, null without a project), `POST /api/claude/skills/install`
+  and `/uninstall` (`{scope, projectPath}`), `POST /api/claude/skills/update`
+  (`{projectPath}`).
 - **Verified** against the real CLI and the published repository, in a
-  throwaway `CLAUDE_CONFIG_DIR`: install, list and update.
+  throwaway `CLAUDE_CONFIG_DIR`: local and user install, list, update and
+  local removal.
   `test_live_install_from_github` repeats this with `GILZACODE_LIVE_CLAUDE=1`.
+
+### Agent history (`agent_history.py`, `routes_agent_history.py`, `components/AgentHistoryPanel.jsx`)
+
+What each Claude Code turn in the panel changed, and undoing it: GilzaBots'
+turn checkpoints, adapted (its `vcs.py` shadow repository, copied).
+
+- **Turn edges come from Claude Code's hooks.** GilzaCode does not run the
+  agent, so the panel's session is started with `--settings
+  <home>/agent-history-hooks.json` (`claude_cli.write_hook_settings`):
+  `UserPromptSubmit` begins a turn, `Stop` ends it, `SessionEnd` ends one left
+  open. The hook command is the bridge executable, `gilzacode-mcp hook
+  turn-start|turn-end` (`mcp_bridge.run_hook`, so a packaged build needs no
+  new executable), which posts to `/api/agent-history/turn-start|turn-end`
+  with the bridge token. It prints nothing on stdout (a `UserPromptSubmit`
+  hook's stdout is added to the prompt) and exits 1 with the reason on stderr
+  when GilzaCode cannot be reached: Claude Code shows it and goes on, the turn
+  is never blocked. An interrupted turn gets no `Stop`; the next prompt closes
+  it. Only sessions the panel starts carry the hooks: a session already open
+  when this shipped records nothing until it is restarted. Verified with the
+  real CLI (2.1.326) on Windows: a `claude -p` turn that created one file and
+  edited another was recorded with both.
+- **Snapshots in a shadow repository.** Each edge commits the project into
+  `<project>/.gilzacode/agent-history/repo` (work tree: the project), so a
+  turn records whatever wrote the files: edit tools, shell commands, a compile.
+  A turn whose snapshots do not differ is dropped. Edits made between turns
+  land in the next start snapshot, not in a turn. The list is
+  `agent-history/turns.json` (the last 200). The folder holds a `.gitignore` of
+  `*`, so the user's repository never offers it for a commit, and GilzaCode
+  never edits the user's `.gitignore`; cloud sync skips it.
+- **Not recorded, and said so:** `.gilzacode/`, LaTeX build output
+  (`SHADOW_EXCLUDES`), what the project's `.gitignore` excludes, and changes
+  inside a folder with its own `.git` (stored as a single link). The Agent tab
+  names those folders. A file the user saves during a turn counts as the
+  turn's.
+- **Undo puts back only the turn's files**, as they were when it began (a
+  file it created is deleted), through `git checkout`, so a project's
+  `.gitattributes` filters apply. A file that changed after the turn (by the
+  user or a later turn) is a conflict (409 `conflict` with the paths): the
+  interface names the files and overwrites them only on a second, destructive
+  confirmation. Nothing is undone while a turn runs (409 `running`), since the
+  running turn would record the undo as its own change, nor when one of the
+  files has unsaved edits in the editor, which a save would write back. Undo
+  is exclusive work (ordered with saves); snapshots are not, and a per-project
+  lock orders them.
+- **Interface.** The Git sidebar's *Agent* tab lists the turns (prompt, time,
+  file count; undone ones dimmed); a turn opens to its files, a file to the
+  turn's diff (`DiffViewer`). Each hook edge reaches the window as an
+  `agent_history` event on `/api/ide/events`: a finished turn marks its files
+  with the robot badge in the tree and the tabs (`AgentChangeBadge`, cleared
+  when the file is opened, re-keyed on rename/move, dropped on delete), and
+  refreshes the tree and the open editor. After an undo, open buffers of the
+  restored files take the disk content and tabs of deleted files close.
 
 ### Helper task models (`helper_models.py`, `components/modals/HelperModelsSection.jsx`)
 

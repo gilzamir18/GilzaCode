@@ -102,7 +102,7 @@ def test_discard_keeps_the_file_when_git_cannot_answer(repo):
 async def test_shadow_history_is_refused_not_served_from_the_user_repository(client, repo):
     response = await client.get("/api/git/log", params={"projectPath": P(repo), "shadow": "true"})
     assert response.status == 400
-    assert "/rewind" in (await response.json())["error"]
+    assert "/api/agent-history" in (await response.json())["error"]
 
 
 def test_a_git_root_inside_the_project_maps_paths(tmp_path, repo):

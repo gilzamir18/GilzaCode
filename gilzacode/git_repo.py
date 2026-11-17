@@ -1,9 +1,10 @@
 """The user's Git repository behind the Git view: context resolution and path mapping.
 
-Ported from GilzaBots' ``ide_server.py`` helpers. GilzaBots also had a "shadow"
-repository of agent checkpoints; GilzaCode has none (Claude Code keeps its own
-checkpoints), and a request for it is refused rather than served from the
-user's repository.
+Ported from GilzaBots' ``ide_server.py`` helpers. GilzaBots also served its
+"shadow" repository of agent checkpoints through these endpoints. GilzaCode's
+agent history has its own (``agent_history.py``, ``/api/agent-history``), so a
+``shadow`` request here is refused rather than served from the user's
+repository.
 """
 
 from __future__ import annotations
@@ -40,7 +41,7 @@ class GitContext:
 
 def resolve(project_path: str, git_root_path: str | None = None, shadow: bool = False) -> GitContext:
     if shadow:
-        raise GitContextError("GilzaCode has no agent checkpoint history; use Claude Code's /rewind.")
+        raise GitContextError("The agent history is not served by the Git endpoints; use /api/agent-history.")
     project_abs = os.path.abspath(project_path)
     if not os.path.isdir(project_abs):
         raise GitContextError("Invalid project path")

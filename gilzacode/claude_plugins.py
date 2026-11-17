@@ -7,12 +7,16 @@ both a Claude Code marketplace (``gilzacode``) and the one plugin it lists
 installed, updated and removed exactly as one installed with ``/plugin``
 (PROJECT_DESIGN.md §8, *GilzaCode skills*).
 
-* ``claude plugin list --json`` says whether it is installed;
-* ``claude plugin install gilzacode-skills --marketplace <repo> --json`` adds the
-  marketplace to the user's settings when it is missing and installs the plugin
-  at user scope, so it serves every project;
+* ``claude plugin list --json`` says whether it is installed, and in which scopes;
+* ``claude plugin install gilzacode-skills --marketplace <repo> --scope <scope> --json``
+  adds the marketplace to the user's settings when it is missing and installs
+  the plugin for the user (``user``: every project) or only for the open
+  project and this user (``local``, run in the project folder);
+* ``claude plugin uninstall gilzacode-skills@gilzacode --scope <scope> --json``
+  removes it from one scope;
 * ``claude plugin marketplace update gilzacode`` followed by
-  ``claude plugin update gilzacode-skills@gilzacode`` brings it up to date.
+  ``claude plugin update gilzacode-skills@gilzacode --scope <scope>`` brings each
+  install up to date.
 
 Each ``--json`` command prints one result line with ``outcome`` ``ok`` or
 ``failed``; a failure is raised as `ClaudeCliError` with the CLI's own message.
@@ -43,12 +47,32 @@ def plugin_argv(executable: str, *args: str) -> list[str]:
     return [executable, "plugin", *args]
 
 
-async def _run(args: tuple[str, ...], timeout: float) -> tuple[int, str, str]:
+#: Where the plugin can be installed: for the user (every project), or only for
+#: one project and only for this user (``<project>/.claude/settings.local.json``,
+#: which Claude Code adds to the user's global Git ignore). Claude Code's third
+#: scope, ``project`` (committed ``.claude/settings.json``), is not offered.
+SCOPES = ("user", "local")
+
+
+def _project(project_path: str) -> str:
+    project = os.path.abspath(str(project_path or "").strip() or ".")
+    if not str(project_path or "").strip() or not os.path.isdir(project):
+        raise ValueError("Open a project to install the skills only for it.")
+    return project
+
+
+def _scope(scope: str) -> str:
+    if scope not in SCOPES:
+        raise ValueError(f"The scope must be one of {', '.join(SCOPES)}.")
+    return scope
+
+
+async def _run(args: tuple[str, ...], timeout: float, cwd: str | None = None) -> tuple[int, str, str]:
     argv = plugin_argv(find_claude(), *args)
-    # The home folder, not a project: `plugin list` reports project scopes for
-    # its working directory, and the plugin is installed for the user.
+    # The home folder for the user scope; the project for the local scope, which
+    # Claude Code ties to its working directory.
     process = await asyncio.create_subprocess_exec(
-        *argv, cwd=os.path.expanduser("~"), env=child_environment(),
+        *argv, cwd=cwd or os.path.expanduser("~"), env=child_environment(),
         stdin=asyncio.subprocess.DEVNULL, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
     )
     try:
@@ -75,9 +99,9 @@ def _result_line(stdout: str) -> dict | None:
     return None
 
 
-async def _command(*args: str, timeout: float = NETWORK_TIMEOUT) -> dict:
+async def _command(*args: str, timeout: float = NETWORK_TIMEOUT, cwd: str | None = None) -> dict:
     """Run a ``--json`` plugin command; its result, or `ClaudeCliError` when it failed."""
-    code, stdout, stderr = await _run(args, timeout)
+    code, stdout, stderr = await _run(args, timeout, cwd)
     result = _result_line(stdout)
     if result is None:
         detail = stderr.strip() or stdout.strip() or f"exit status {code}"
@@ -88,9 +112,31 @@ async def _command(*args: str, timeout: float = NETWORK_TIMEOUT) -> dict:
     return result
 
 
-async def skills_status() -> dict:
-    """Whether the GilzaCode skills plugin is installed, and which version."""
-    code, stdout, stderr = await _run(("list", "--json"), LIST_TIMEOUT)
+def _same_path(a: str, b: str) -> bool:
+    return os.path.normcase(os.path.abspath(a)) == os.path.normcase(os.path.abspath(b))
+
+
+def _entry(plugins: list, scope: str, project: str | None) -> dict | None:
+    """The plugin's entry for `scope`. Local entries are listed from any folder,
+    each with its ``projectPath``, so only the open project's one counts."""
+    for plugin in plugins:
+        if not isinstance(plugin, dict) or plugin.get("id") != PLUGIN_ID or plugin.get("scope") != scope:
+            continue
+        if scope == "local" and not (project and _same_path(str(plugin.get("projectPath") or ""), project)):
+            continue
+        return plugin
+    return None
+
+
+def _describe(entry: dict | None) -> dict:
+    return {"installed": entry is not None, "enabled": bool(entry and entry.get("enabled")),
+            "version": str(entry.get("version") or "") if entry else ""}
+
+
+async def skills_status(project_path: str = "") -> dict:
+    """Whether the skills are installed for the user and for the open project (``local`` is None without one)."""
+    project = _project(project_path) if str(project_path or "").strip() else None
+    code, stdout, stderr = await _run(("list", "--json"), LIST_TIMEOUT, project)
     try:
         plugins = json.loads(stdout)
     except ValueError:
@@ -98,29 +144,49 @@ async def skills_status() -> dict:
     if code != 0 or not isinstance(plugins, list):
         detail = stderr.strip() or stdout.strip() or f"exit status {code}"
         raise ClaudeCliError(f"`claude plugin list` failed: {detail[-800:]}", kind="failed")
-    entry = next((p for p in plugins if isinstance(p, dict) and p.get("id") == PLUGIN_ID), None)
     return {
         "plugin": PLUGIN_ID,
         "repository": REPOSITORY_URL,
-        "installed": entry is not None,
-        "enabled": bool(entry and entry.get("enabled")),
-        "version": str(entry.get("version") or "") if entry else "",
+        "project": project or "",
+        "scopes": {
+            "user": _describe(_entry(plugins, "user", project)),
+            "local": _describe(_entry(plugins, "local", project)) if project else None,
+        },
     }
 
 
-async def install_skills() -> dict:
-    """Install the plugin at user scope, adding its marketplace first when needed."""
-    await _command("install", PLUGIN_NAME, "--marketplace", MARKETPLACE_SOURCE, "--scope", "user", "--json")
-    return await skills_status()
+def _cwd(scope: str, project_path: str) -> str | None:
+    return _project(project_path) if scope == "local" else None
 
 
-async def update_skills() -> dict:
-    """Refresh the marketplace, then update the plugin to the version it lists.
+async def install_skills(scope: str = "user", project_path: str = "") -> dict:
+    """Install the plugin in `scope`, adding its marketplace first when needed."""
+    cwd = _cwd(_scope(scope), project_path)
+    await _command("install", PLUGIN_NAME, "--marketplace", MARKETPLACE_SOURCE, "--scope", scope, "--json", cwd=cwd)
+    return await skills_status(project_path)
 
-    The result carries ``updated``: false when the plugin was already current.
+
+async def uninstall_skills(scope: str = "user", project_path: str = "") -> dict:
+    """Remove the plugin from `scope` only; another scope's install stays."""
+    cwd = _cwd(_scope(scope), project_path)
+    await _command("uninstall", PLUGIN_ID, "--scope", scope, "--json", timeout=LIST_TIMEOUT, cwd=cwd)
+    return await skills_status(project_path)
+
+
+async def update_skills(project_path: str = "") -> dict:
+    """Refresh the marketplace, then update the plugin in each scope it is installed in.
+
+    The result carries ``updated``: false when every install was already current.
     """
+    status = await skills_status(project_path)
+    installed = [scope for scope, state in status["scopes"].items() if state and state["installed"]]
+    if not installed:
+        raise ValueError("The skills are not installed.")
     await _command("marketplace", "update", MARKETPLACE_NAME, "--json")
-    result = await _command("update", PLUGIN_ID, "--json")
-    status = await skills_status()
-    status["updated"] = result.get("updateOutcome") != "up_to_date"
+    updated = False
+    for scope in installed:
+        result = await _command("update", PLUGIN_ID, "--scope", scope, "--json", cwd=_cwd(scope, project_path))
+        updated = updated or result.get("updateOutcome") != "up_to_date"
+    status = await skills_status(project_path)
+    status["updated"] = updated
     return status

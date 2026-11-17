@@ -229,7 +229,8 @@
     "reviewFileFilter": "File",
     "reviewAllFiles": "All files",
     "nestedRepoWarningTitle": "Folders outside the agent history",
-    "nestedRepoWarningBody": "Git stores a folder that has its own .git as a link, so the agent history never records what changes inside it. Open that folder as the project, or remove its inner .git, to review those changes."
+    "nestedRepoWarningBody": "Git stores a folder that has its own .git as a link, so the agent history never records what changes inside it. Open that folder as the project, or remove its inner .git, to review those changes.",
+    "agentTab": "Agent"
   },
   "editorPanel": {
     "emptyRichText": "No editable content. Open a .tex file with a document body.",
@@ -863,7 +864,7 @@
     "gilzacodeSkillsInstallError": "Could not install the GilzaCode skills: ",
     "gilzacodeSkillsUpdateError": "Could not update the GilzaCode skills: ",
     "gilzacodeSkillsStatusError": "Could not check the GilzaCode skills: ",
-    "gilzacodeSkillsHint": "Skills from the GilzaCodeSkills repository, installed for your user as the Claude Code plugin gilzacode-skills. They work in every project, in GilzaCode or anywhere else Claude Code runs. Needs Git and an internet connection.",
+    "gilzacodeSkillsHint": "Skills from the GilzaCodeSkills repository, installed as Claude Code's gilzacode-skills plugin. Global installs them for your user in every project, in GilzaCode or wherever Claude Code runs. \"This project only\" installs them only in the open project, in its .claude/settings.local.json, which Claude Code keeps out of Git. Requires Git and an internet connection.",
     "claudeModelTitle": "Claude Code model",
     "claudeModelAnthropic": "Anthropic account (default)",
     "claudeModelOllama": "Ollama (local server or ollama.com)",
@@ -970,7 +971,17 @@
     "dictationHint": "Records from the microphone and types what you said into the chat composer, for you to review before sending. The model runs on this machine, so nothing is uploaded. Larger models are markedly more accurate outside English: on a Portuguese test sentence, tiny and base both misheard a word while small reproduced it exactly.",
     "chatThoughtPreviewTokens": "Reasoning shown in the chat (tokens)",
     "chatThoughtPreviewTokensHint": "While a turn runs, the chat keeps only the last lines of reasoning in view. The whole of it is read in the Agent Thinking panel, which the chat links to (default: 1000).",
-    "claudeCliTitle": "Claude Code CLI (required)"
+    "claudeCliTitle": "Claude Code CLI (required)",
+    "gilzacodeSkillsScopeUser": "Global (every project)",
+    "gilzacodeSkillsScopeLocal": "This project only ({{project}}), only for you",
+    "gilzacodeSkillsNoProject": "Open a project to install them only for it.",
+    "gilzacodeSkillsInstallScopeBtn": "Install",
+    "gilzacodeSkillsRemoveBtn": "Remove",
+    "gilzacodeSkillsRemoving": "Removing…",
+    "gilzacodeSkillsRemoveConfirm": "Remove the GilzaCode skills from: {{scope}}?",
+    "gilzacodeSkillsRemoveSuccess": "Removed. Restart Claude Code, or type /reload-plugins in it, for the change to apply.",
+    "gilzacodeSkillsRemoveError": "Could not remove the GilzaCode skills: ",
+    "gilzacodeSkillsUpdateSuccessAll": "Updated. Restart Claude Code, or type /reload-plugins in it, to load the new version."
   },
   "hardwareModal": {
     "title": "Hardware Configuration",
@@ -1382,7 +1393,8 @@
     "editBranchNotSent": "The branch \"{{name}}\" was created, but the edited message was not sent ({{error}}). It is in the message box: send it from there.",
     "monitorChatMissing": "The chat of this monitor event no longer exists.",
     "runningCommand": "Running {{command}}",
-    "slashCommandSyncFailed": "Could not reload the chat after the command: {{error}}"
+    "slashCommandSyncFailed": "Could not reload the chat after the command: {{error}}",
+    "agentTurnUndone": "Agent turn undone: {{count}} files put back."
   },
   "onboarding": {
     "welcome": "Welcome to GilzaBots! ",
@@ -2092,5 +2104,27 @@
     "installingHint": "The installer downloads Claude Code and shows no progress; this can take a minute or two.",
     "guideBtn": "Installation guide",
     "checkAgain": "Check again"
+  },
+  "agentHistory": {
+    "subtitle": "What each Claude Code turn in the panel changed.",
+    "running": "Claude Code is working on a turn…",
+    "refresh": "Refresh",
+    "empty": "No turn has changed files yet. Each prompt you send to Claude Code in the panel becomes an entry here when it changes something. A session started before this feature records nothing until the panel restarts it.",
+    "nestedRepos": "Folders with a Git repository of their own are not recorded: {{folders}}",
+    "noPrompt": "(no prompt text)",
+    "fileCount_one": "{{count}} file",
+    "fileCount_other": "{{count}} files",
+    "undone": "undone",
+    "undo": "Undo",
+    "undoing": "Undoing…",
+    "undoHint": "Put back the files this turn changed",
+    "undoWhileRunning": "Wait for Claude Code to finish its turn",
+    "undoTitle": "Undo agent turn",
+    "undoConfirm": "Put these files back as they were before this turn?\n{{files}}",
+    "undoConflict": "These files changed after the turn, and undoing it discards those changes:\n{{files}}\n\nUndo anyway?",
+    "undoUnsaved": "Save or discard the unsaved changes in these files first:\n{{files}}",
+    "statusAdded": "Created by the turn",
+    "statusModified": "Modified by the turn",
+    "statusDeleted": "Deleted by the turn"
   }
 }
